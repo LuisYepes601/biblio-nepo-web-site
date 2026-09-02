@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiblioNepo — La lectura es la clave para construir tu futuro</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./src/assets/styles/base/variables.css">
+  <link rel="stylesheet" href="./src/assets/styles/base/global.css">
+  <link rel="stylesheet" href="./src/assets/styles/components/buttons.css">
+  <link rel="stylesheet" href="./src/assets/styles/components/card.css">
+  <link rel="stylesheet" href="./src/features/hero/hero.styles.css">
+  <link rel="stylesheet" href="./src/features/catalog/catalog.styles.css">
+  <link rel="stylesheet" href="/src/core/components/state-message.css">
+  <link rel="stylesheet" href="./src/features/catalog/modal.styles.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo">BiblioNepo</div>
+    <nav class="primary-nav" id="primaryNav">
+      <a href="#inicio" id="navInicio" class="active">Inicio</a>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#comunidad">Comunidad</a>
+      <a href="#nosotros">Sobre Nosotros</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+    <div class="nav-actions">
+      <a href="#catalogo" class="btn btn-fill">Empezar a Leer</a>
+      <a href="#" class="btn btn-outline">Iniciar Sesión</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Abrir menú">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <section id="inicio" class="hero" style="padding:0;">
+    <div class="hero-copy">
+      <div class="hero-eyebrow">BiblioNepo</div>
+      <h1 id="heroTitle">La lectura es la clave para construir tu futuro.</h1>
+      <p class="sub" id="heroSub">Explora miles de títulos, gestiona tus préstamos y únete a una comunidad que lee contigo, desde cualquier lugar.</p>
+      <div class="hero-ctas">
+        <a href="#catalogo" class="btn btn-fill">Ver catálogo</a>
+        <a href="#nosotros" class="btn btn-outline">Cómo funciona</a>
+      </div>
+      <div class="hero-nav-controls">
+        <button class="arrow-btn" id="prevSlide" aria-label="Anterior">←</button>
+        <button class="arrow-btn" id="nextSlide" aria-label="Siguiente">→</button>
+        <div class="hero-dots" id="heroDots"></div>
+      </div>
+    </div>
+    <div class="hero-visual" id="heroVisual">
+      <div class="float-stat">
+        <div class="num">1,240+</div>
+        <div class="label">libros disponibles en la colección</div>
+      </div>
+      <div class="laptop-mock">
+        <div class="laptop-screen">
+          <div class="screen-topbar">
+            <span class="brand">BiblioNepo</span>
+            <span class="count">42 títulos</span>
+          </div>
+          <h4>Colección BiblioNepo</h4>
+          <div class="mini-grid" id="miniGrid"></div>
+        </div>
+        <div class="laptop-base"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN CATÁLOGO PRINCIPAL -->
+  <section id="catalogo" class="catalogo">
+    <div class="section-head">
+      <h2>Un catálogo que crece con cada lector.</h2>
+      <p>Filtra y encuentra el próximo libro que quieras devorar en una tarde.</p>
+    </div>
+    <div class="filter-tabs" id="filterTabs">
+      <button class="active" data-cat="todos">Todos</button>
+      <button data-cat="ficcion">Ficción</button>
+      <button data-cat="historia">Historia</button>
+      <button data-cat="ciencia">Ciencia</button>
+      <button data-cat="poesia">Poesía</button>
+    </div>
+    <div class="book-grid" id="bookGrid"></div>
+    
+    <!-- Contenedor fijo de paginación para evitar conflictos con el CSS Grid -->
+    <div id="paginationContainer" class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin: 40px 0; width: 100%;"></div>
+
+    <div class="catalog-cta-banner">
+      <div class="cta-info">
+        <h3>Catálogo de la Biblioteca</h3>
+        <p>Explora la colección completa de libros disponibles y descubre tu próxima lectura.</p>
+      </div>
+      <a href="#/libros" class="btn-cta-catalog" id="btnSeeAllBooks">
+        <span>Ver todos los libros</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- NUEVA VISTA DE DETALLE DEL LIBRO (Oculta por defecto) -->
+  <section id="bookDetailView" class="catalogo" style="display: none; padding: 40px 20px;">
+    <div style="max-width: 900px; margin: 0 auto;">
+      <button id="btnCloseDetail" class="btn btn-outline" style="margin-bottom: 24px; display: inline-flex; align-items: center; gap: 8px;">
+        ← Volver al catálogo
+      </button>
+
+      <!-- Tarjeta de Detalle Principal -->
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 32px; background: var(--card-bg, #fff); padding: 32px; border-radius: 16px; border: 1px solid var(--border-color, #e5e7eb);">
+        <img id="detailCover" src="" alt="Portada del libro" style="width: 100%; height: 350px; object-fit: cover; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <div>
+          <span id="detailCategory" style="background: var(--accent-rose-light, #fce7f3); color: var(--accent-rose, #db2777); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"></span>
+          <h2 id="detailTitle" style="font-size: 1.8rem; margin: 12px 0 8px 0; font-family: 'Fraunces', serif;"></h2>
+          <p id="detailAuthor" style="font-size: 0.95rem; color: var(--text-muted, #6b7280); font-weight: 600; margin-bottom: 20px;"></p>
+          <p id="detailDescription" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main, #374151);"></p>
+        </div>
+      </div>
+
+      <!-- SECCIÓN DE 5 LIBROS RECOMENDADOS -->
+      <div style="margin-top: 48px;">
+        <h3 style="font-size: 1.25rem; font-family: 'Fraunces', serif; margin-bottom: 16px;">Libros recomendados en esta categoría</h3>
+        <div id="recommendedGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;">
+          <!-- Aquí se inyectarán los 5 recomendados con exclude_by_id -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="comunidad" class="comunidad">
+    <div class="section-head">
+      <h2>No leas solo. Lee en comunidad.</h2>
+      <p>Clubes de lectura, foros de discusión y recomendaciones hechas por otros lectores como tú.</p>
+    </div>
+    <div class="stat-row">
+      <div><div class="num">3,600</div><div class="label">lectores activos</div></div>
+      <div><div class="num">128</div><div class="label">clubes de lectura</div></div>
+      <div><div class="num">1,240</div><div class="label">títulos disponibles</div></div>
+      <div><div class="num">98%</div><div class="label">devoluciones a tiempo</div></div>
+    </div>
+  </section>
+
+  <section id="nosotros" class="about">
+    <div class="about-photo"></div>
+    <div class="about-text">
+      <h2>Sobre Nosotros</h2>
+      <p>BiblioNepo nació como un proyecto para acercar la lectura a estudiantes que no siempre tienen fácil acceso a una biblioteca física. Digitalizamos catálogos, gestionamos préstamos y construimos un espacio donde pedir, leer y devolver un libro es simple.</p>
+      <p>Detrás de cada préstamo hay un sistema pensado para bibliotecarios y lectores por igual: control de inventario, historial de préstamos y recomendaciones que se ajustan a lo que ya has leído.</p>
+    </div>
+  </section>
+
+  <section id="contacto" style="padding-bottom:0;">
+    <div class="section-head">
+      <h2>Hablemos.</h2>
+      <p>¿Dudas sobre préstamos, catálogo o tu cuenta? Escríbenos.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:10px;">BiblioNepo</div>
+        <p style="color:var(--muted); font-size:0.88rem; max-width:260px; line-height:1.6;">Un sistema de gestión bibliotecaria para leer, prestar y descubrir sin fricción.</p>
+      </div>
+      <div>
+        <h5>Navegación</h5>
+        <ul>
+          <li><a href="#inicio">Inicio</a></li>
+          <li><a href="#catalogo">Catálogo</a></li>
+          <li><a href="#comunidad">Comunidad</a></li>
+          <li><a href="#nosotros">Sobre Nosotros</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Cuenta</h5>
+        <ul>
+          <li><a href="#">Iniciar sesión</a></li>
+          <li><a href="#">Crear cuenta</a></li>
+          <li><a href="#">Mis préstamos</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Contacto</h5>
+        <ul>
+          <li><a href="mailto:hola@biblionepo.com">hola@biblionepo.com</a></li>
+          <li><a href="#">Instagram</a></li>
+          <li><a href="#">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 BiblioNepo. Todos los derechos reservados.</span>
+      <span>Hecho para lectores.</span>
+    </div>
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

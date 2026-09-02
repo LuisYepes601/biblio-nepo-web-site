@@ -1,0 +1,262 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .display {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 48px;
+  background: var(--paper);
+  position: relative;
+  z-index: 40;
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+nav.primary-nav {
+  display: flex;
+  gap: 36px;
+}
+
+nav.primary-nav a {
+  font-size: 0.94rem;
+  color: var(--ink-soft);
+  position: relative;
+  padding-bottom: 4px;
+}
+
+nav.primary-nav a.active {
+  color: var(--ink);
+}
+
+nav.primary-nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -23px;
+  height: 2px;
+  background: var(--wood);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+}
+
+.nav-toggle span {
+  width: 22px;
+  height: 2px;
+  background: var(--ink);
+  display: block;
+}
+
+section {
+  padding: 96px 56px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 48px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.section-head h2 {
+  font-size: clamp(1.8rem, 2.4vw, 2.3rem);
+  max-width: 520px;
+}
+
+.section-head p {
+  color: var(--muted);
+  max-width: 360px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.comunidad {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.comunidad .section-head h2 {
+  color: var(--cream);
+}
+
+.comunidad .section-head p {
+  color: #B9BECB;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 40px;
+}
+
+.stat-row .num {
+  font-family: 'Fraunces', serif;
+  font-size: 2.4rem;
+}
+
+.stat-row .label {
+  font-size: 0.85rem;
+  color: #B9BECB;
+  margin-top: 6px;
+}
+
+.about {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 72px;
+  align-items: center;
+  background: var(--cream-2);
+}
+
+.about-photo {
+  aspect-ratio: 4/5;
+  border-radius: 2px;
+  background-size: cover;
+  background-position: center;
+  background-image: url('https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1200&auto=format&fit=crop');
+}
+
+.about-text p {
+  color: var(--ink-soft);
+  line-height: 1.75;
+  margin-top: 18px;
+  max-width: 460px;
+}
+
+footer {
+  background: var(--paper);
+  padding: 80px 56px 32px;
+  border-top: 1px solid var(--line);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 56px;
+}
+
+.footer-grid h5 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.footer-grid ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-grid ul a {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.footer-grid ul a:hover {
+  color: var(--ink);
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  header {
+    padding: 18px 24px;
+  }
+  nav.primary-nav {
+    display: none;
+  }
+  .nav-toggle {
+    display: flex;
+  }
+  section {
+    padding: 64px 24px;
+  }
+  .about {
+    grid-template-columns: 1fr;
+  }
+  .stat-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
