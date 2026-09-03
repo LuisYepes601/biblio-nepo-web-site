@@ -43,7 +43,7 @@ export async function fetchTiposLibro({ page = 0, size = 50 } = {}) {
   params.set('page', page);
   params.set('size', size);
 
-  const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TIPO_LIBROS}?${params.toString()}`;
+  const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TIPO_LIBROS}?${params.toString()}&sort=id,asc`;
 
   const response = await fetch(url, {
     method: 'GET',

@@ -9,61 +9,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- Tus únicos archivos CSS necesarios -->
   <link rel="stylesheet" href="./src/assets/styles/base/variables.css">
   <link rel="stylesheet" href="./src/assets/styles/base/global.css">
-  <link rel="stylesheet" href="/src/features/users/users.css">
+  <link rel="stylesheet" href="./src/features/admin/admin.css">
+  <link rel="stylesheet" href="/src/features/autors/authors.css">
+  <link rel="stylesheet" href="/src/features/books/books.css">
+  <link rel="stylesheet" href="/src/features/categories/categories.css">
 </head>
 <body>
 
   <div class="app-layout">
     
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="sidebar-top">
-        <div class="brand-box">
-          <div class="brand-icon"><i class="fa-solid fa-book-open"></i></div>
-          <span>BiblioNepo</span>
-        </div>
+    <div id="admin-sidebar-container"></div>
 
-        <div class="user-profile-card">
-          <div class="user-info">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
-            <div>
-              <div class="user-name">Carlos Admin</div>
-              <div class="user-role">Super Administrador</div>
-            </div>
-          </div>
-          <i class="fa-solid fa-chevron-down profile-arrow"></i>
-        </div>
-
-        <nav class="sidebar-nav">
-          <ul>
-            <li class="active"><a href="#"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
-            <li><a href="#"><i class="fa-solid fa-book"></i> Catálogo Libros</a></li>
-            <li><a href="#"><i class="fa-solid fa-users"></i> Gestión Usuarios</a></li>
-            <li><a href="#"><i class="fa-solid fa-bookmark"></i> Préstamos Activos</a></li>
-            <li><a href="#"><i class="fa-solid fa-gear"></i> Configuración</a></li>
-          </ul>
-        </nav>
-      </div>
-
-      <div class="sidebar-promo">
-        <h4>BiblioNepo Pro</h4>
-        <p>Sistema optimizado para la gestión bibliotecaria e institucional.</p>
-        <button class="promo-btn" id="btnGoToPublic">Sitio Público</button>
-      </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
     <main class="main-content">
       
       <header class="top-header">
-        <div class="header-search">
-          <i class="fa-solid fa-search search-icon"></i>
-          <input type="text" placeholder="Buscar libros, usuarios o reportes...">
-        </div>
-        <div class="header-actions">
+        <!-- Barra de búsqueda general eliminada -->
+        <div class="header-actions" style="margin-left: auto;">
           <button class="icon-btn" title="Notificaciones">
             <i class="fa-regular fa-bell"></i>
             <span class="notification-badge"></span>
@@ -74,104 +37,11 @@
         </div>
       </header>
 
-      <div class="dashboard-body">
-        
-        <div class="view-header">
-          <h1>Analytics & Overview</h1>
-          <p>Vista general de rendimiento, métricas operativas y administración.</p>
-        </div>
+      <div id="admin-content-container" class="dashboard-body"></div>
 
-        <!-- TARJETAS DE MÉTRICAS (KPIs) -->
-        <section class="analytics-grid">
-          <article class="analytic-card">
-            <div class="card-top">
-              <span class="card-title">Total Usuarios</span>
-              <div class="card-icon"><i class="fa-solid fa-users"></i></div>
-            </div>
-            <div class="card-metrics">
-              <span class="card-number">1,150</span>
-              <span class="trend-badge positive">+4.37%</span>
-            </div>
-          </article>
-
-          <article class="analytic-card">
-            <div class="card-top">
-              <span class="card-title">Libros en Catálogo</span>
-              <div class="card-icon"><i class="fa-solid fa-book-bookmark"></i></div>
-            </div>
-            <div class="card-metrics">
-              <span class="card-number">425</span>
-              <span class="trend-badge negative">-2.06%</span>
-            </div>
-          </article>
-
-          <article class="analytic-card">
-            <div class="card-top">
-              <span class="card-title">Préstamos Activos</span>
-              <div class="card-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-            </div>
-            <div class="card-metrics">
-              <span class="card-number">225</span>
-              <span class="trend-badge positive">+1.28%</span>
-            </div>
-          </article>
-
-          <article class="analytic-card">
-            <div class="card-top">
-              <span class="card-title">Entregas a Tiempo</span>
-              <div class="card-icon"><i class="fa-solid fa-circle-check"></i></div>
-            </div>
-            <div class="card-metrics">
-              <span class="card-number">700</span>
-              <span class="trend-badge positive">+3.45%</span>
-            </div>
-          </article>
-        </section>
-
-        <!-- MÓDULO DE GESTIÓN DE USUARIOS -->
-        <section class="users-module-container">
-          <div class="users-header">
-            <div>
-              <h3>Gestión de Usuarios</h3>
-              <p>Administra accesos, asignación de roles y estados institucionales.</p>
-            </div>
-            <button class="btn-primary">
-              <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
-            </button>
-          </div>
-
-          <div class="users-filters">
-            <button class="filter-chip active" data-filter="todos">Todos</button>
-            <button class="filter-chip" data-filter="lectores">Lectores</button>
-            <button class="filter-chip" data-filter="bibliotecarios">Bibliotecarios</button>
-            <button class="filter-chip" data-filter="admins">Admins</button>
-          </div>
-
-          <div class="users-table-wrapper">
-            <table class="users-table">
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Correo Electrónico</th>
-                  <th>Rol</th>
-                  <th>Estado</th>
-                  <th>Fecha Registro</th>
-                  <th class="text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="usersTableBody">
-                <!-- Se inyecta dinámicamente desde admin.js -->
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-      </div>
     </main>
-
   </div>
 
-  <!-- Tu único script principal -->
-  <script type="module" src="/src/features/users/users.js"></script>
+<script type="module" src="./src/features/admin/admin.main.js"></script>
 </body>
 </html>

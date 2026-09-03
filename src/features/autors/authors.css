@@ -1,0 +1,145 @@
+/* Estilos en Cuadrícula (Cards) para el módulo de Autores */
+
+.authors-module-container {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.authors-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.authors-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 4px;
+}
+
+.authors-header p {
+  font-size: 0.85rem;
+  color: var(--text-muted, #64748b);
+}
+
+.authors-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+/* Cuadrícula adaptable */
+.authors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.author-card {
+  background: var(--bg-alt, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.author-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.author-card-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Imagen del autor más grande y prominente */
+.author-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.author-info {
+  width: 100%;
+}
+
+.author-info h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 4px;
+}
+
+.author-info p {
+  font-size: 0.825rem;
+  color: var(--text-muted, #64748b);
+}
+
+.author-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  padding-top: 14px;
+  width: 100%;
+}
+
+/* Contenedor de paginación inferior */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.pagination-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-main, #1e293b);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--accent-rose-light, #fce7f3);
+  color: var(--accent-rose, #db2777);
+  border-color: transparent;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
+}

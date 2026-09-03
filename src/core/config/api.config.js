@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'https://biblio-nepo-api.onrender.com',
+  BASE_URL: 'http://biblio-nepo-api.onrender.com',
   ENDPOINTS: {
     LIBROS_ADMIN: '/api/v1/libros/admin',
     CATEGORIAS_LIBROS: '/api/v1/categoria-libros',
@@ -8,6 +8,11 @@ export const API_CONFIG = {
     GENEROS_LIBROS: '/api/v1/genero-libros',
     REGISTER: '/api/v1/register',
     ROLES: '/api/v1/roles',
-    TIPO_IDENTIFICACIONES: '/api/v1/admin/tipo-identificaciones'
+    TIPO_IDENTIFICACIONES: '/api/v1/admin/tipo-identificaciones',
+    AUTORES_ADMIN: '/api/v1/admin/autors',
+    AUTOR_DETAILS: '/api/v1/admin/autors',
+    PAISES: '/api/v1/paises',
+    FORMATO_LIBROS: '/api/v1/formato-libros',
+    CATEGORIAS_LIBROS_ADMIN: '/api/v1/categorias/admin',
   }
 };
