@@ -48,9 +48,7 @@ export async function getUserById(id) {
  */
 export async function createUser(formData) {
   try {
-    const endpoint = "https://biblio-nepo-api.onrender.com/api/v1/register";
-
-    
+    const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER || '/api/v1/register'}`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -58,19 +56,9 @@ export async function createUser(formData) {
     });
 
     if (!response.ok) {
-      // Capturamos la respuesta de error completa del backend
       const errorData = await response.json().catch(() => ({}));
-      
-      // Imprimimos el error completo en la consola para saber qué campo falla
       console.error('❌ DETALLES DE VALIDACIÓN DEL BACKEND:', errorData);
-
-      // Extraemos el mensaje, los errores de campos (si Spring Boot los envía) o usamos un genérico
       let errorMsg = errorData.message || errorData.error || 'Los datos enviados no son válidos';
-      
-      if (errorData.errors || errorData.details) {
-        errorMsg += ' (Revisa la consola para ver qué campo exacto falló)';
-      }
-
       throw new Error(errorMsg);
     }
 
@@ -81,10 +69,15 @@ export async function createUser(formData) {
   }
 }
 
-export async function updateUser(id, userData) {
+/**
+ * Actualiza los datos básicos de un usuario por ID (PUT)
+ */
+export async function updateUser(id_user, userData) {
   try {
     const isFormData = userData instanceof FormData;
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ADMIN || '/usuarios'}/${id}`, {
+    const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USUARIOS}/${id_user}`;
+
+    const response = await fetch(endpoint, {
       method: 'PUT',
       headers: isFormData ? {} : { 'Content-Type': 'application/json' },
       body: isFormData ? userData : JSON.stringify(userData)
@@ -116,6 +109,26 @@ export async function deleteUser(id) {
     return true;
   } catch (error) {
     console.error(`Error en deleteUser (${id}):`, error);
+    throw error;
+  }
+}
+
+export async function getUserDetails(id) {
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/users/admin/${id}/details`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('No se pudo obtener el detalle del usuario.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en getUserDetails:', error);
     throw error;
   }
 }

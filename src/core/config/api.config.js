@@ -19,5 +19,7 @@ export const API_CONFIG = {
     FORMATS_ADMIN: '/api/v1/formato-libros/admin',
     GENEROS_LIBRO_ADMIN: '/api/v1/genero-libros/admin',
     RECOVERY_PASSWORD: '/api/v1/recuperar-credenciales',
+    USUARIOS: '/api/v1/users',
+    PERFIL: '/api/v1/perfil',
   }
 };

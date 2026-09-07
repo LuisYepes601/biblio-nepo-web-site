@@ -1,5 +1,6 @@
-import { getAllUsers, createUser } from './users.api.js';
+import { getAllUsers, createUser, updateUser, getUserDetails } from './users.api.js';
 import { API_CONFIG } from '../../core/config/api.config.js';
+import{updateProfilePhoto} from '../perfil/perfilApi.js'
 
 let currentFilters = {
   nombre: '',
@@ -14,7 +15,7 @@ export async function loadUsersView() {
   const container = document.getElementById('admin-content-container');
   if (!container) return;
 
-  // 1. Inyectar HTML principal de la vista
+  // 1. Inyectar HTML principal de la vista (Incluye Modales de Creación, Detalles y Edición)
   container.innerHTML = `
     <div class="view-header">
       <h1>Gestión de Usuarios</h1>
@@ -153,16 +154,98 @@ export async function loadUsersView() {
         </form>
       </div>
     </div>
+
+    <!-- MODAL DE DETALLES INSTITUCIONALES DE USUARIO -->
+    <div id="userDetailsModal" class="user-modal-overlay">
+      <div class="user-modal-card" style="width: 520px;">
+        <div class="user-modal-header" style="background: #1e293b;">
+          <h3><i class="fa-solid fa-circle-info"></i> Detalles Institucionales</h3>
+          <button id="closeUserDetailsModal" class="user-modal-close">&times;</button>
+        </div>
+        <div class="user-modal-body" id="userDetailsBody" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div style="grid-column: span 2; text-align: center; padding: 20px; color: #64748b;">
+            Cargando detalles...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN DE USUARIO -->
+    <div id="editUserModal" class="user-modal-overlay">
+      <div class="user-modal-card">
+        <div class="user-modal-header" style="background: #0f766e;">
+          <h3><i class="fa-solid fa-user-pen"></i> Editar Datos Básicos</h3>
+          <button id="closeEditUserModal" class="user-modal-close">&times;</button>
+        </div>
+        <form id="editUserForm" class="user-modal-body">
+          <input type="hidden" id="editUsrId">
+          <div class="user-form-grid">
+            <div>
+              <label>Primer Nombre <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="editUsrNombre" required>
+            </div>
+            <div>
+              <label>Segundo Nombre</label>
+              <input type="text" id="editUsrSegundoNombre">
+            </div>
+            <div>
+              <label>Primer Apellido <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="editUsrPrimerApellido" required>
+            </div>
+            <div>
+              <label>Segundo Apellido <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="editUsrSegundoApellido" required>
+            </div>
+            <div>
+              <label>Tipo Documento <span style="color: #ef4444;">*</span></label>
+              <select id="editUsrTipoId" required class="user-select">
+                <option value="">Cargando tipos...</option>
+              </select>
+            </div>
+            <div>
+              <label>N° Identificación <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="editUsrNumId" required>
+            </div>
+            <div>
+              <label>Fecha de Nacimiento <span style="color: #ef4444;">*</span></label>
+              <input type="date" id="editUsrFechaNac" required>
+            </div>
+            <div>
+              <label>Rol asignado <span style="color: #ef4444;">*</span></label>
+              <select id="editUsrRol" required class="user-select">
+                <option value="">Cargando roles...</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label>Correo Electrónico <span style="color: #ef4444;">*</span></label>
+            <input type="email" id="editUsrEmail" required>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label>Contraseña / Credencial <span style="color: #ef4444;">*</span></label>
+            <input type="password" id="editUsrPassword" required placeholder="••••••••">
+          </div>
+
+          <div class="user-modal-actions">
+            <button type="button" id="btnCancelEditModal" class="btn-secondary">Cancelar</button>
+            <button type="submit" id="btnSubmitEditUser" class="btn-primary" style="background: #0f766e;">Actualizar Usuario</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
 
-  // 2. Inyectar estilos CSS indispensables del Modal
+  // 2. Inyectar estilos CSS indispensables de los Modales
   injectModalStyles();
 
-  // 3. Inicializar lógica del modal y eventos
+  // 3. Inicializar lógica de eventos y renderizado
   setupModalEvents();
   setupFilterEvents();
+  setupDetailsModalEvents();
+  setupEditModalEvents();
 
-  // 4. Cargar la tabla de usuarios
   await fetchAndRenderUsers();
 }
 
@@ -176,11 +259,7 @@ async function fetchAndRenderUsers() {
   }
 
   try {
-    const responseData = await getAllUsers(currentFilters);
-    const usersList = Array.isArray(responseData) 
-      ? responseData 
-      : (responseData?.content || responseData?.data || []);
-
+    const usersList = await getAllUsers(currentFilters);
     renderUsersTable(usersList);
   } catch (error) {
     console.error('Error al renderizar usuarios:', error);
@@ -232,8 +311,11 @@ function renderUsersTable(users) {
         <td>${user.numeroIdentificacion || 'N/A'}</td>
         <td>${user.email || 'N/A'}</td>
         <td style="white-space: nowrap;">${fechaNac}</td>
-        <td class="text-right">
-          <button class="icon-btn" style="width: 32px; height: 32px;" title="Editar" data-id="${user.id}">
+        <td class="text-right" style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+          <button class="icon-btn btn-user-details" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;" title="Ver Detalles" data-id="${user.id}">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          <button class="icon-btn btn-user-edit" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;" title="Editar Datos" data-id="${user.id}">
             <i class="fa-solid fa-pen"></i>
           </button>
         </td>
@@ -243,101 +325,82 @@ function renderUsersTable(users) {
 }
 
 /**
- * Configura la apertura, cierre y envío del formulario del modal de usuarios
+ * Configura los eventos del Modal de Edición de Usuario
  */
-function setupModalEvents() {
-  const modal = document.getElementById('createUserModal');
-  const btnNew = document.getElementById('btnNewUser');
-  const btnClose = document.getElementById('closeUserModal');
-  const btnCancel = document.getElementById('btnCancelUserModal');
-  const form = document.getElementById('createUserForm');
+function setupEditModalEvents() {
+  const modal = document.getElementById('editUserModal');
+  const btnClose = document.getElementById('closeEditUserModal');
+  const btnCancel = document.getElementById('btnCancelEditModal');
+  const form = document.getElementById('editUserForm');
 
-  const fileInput = document.getElementById('usrImg');
-  const previewBox = document.getElementById('usrAvatarPreview');
-  const fileNameText = document.getElementById('usrFileName');
-
-  // Abrir Modal
-  btnNew?.addEventListener('click', () => {
-    loadModalDropdowns();
-    modal.style.display = 'flex';
-  });
-
-  // Cerrar Modal
   const closeModal = () => {
     modal.style.display = 'none';
     form.reset();
-    previewBox.innerHTML = '👤';
-    fileNameText.textContent = 'JPG, PNG o WEBP';
   };
 
   btnClose?.addEventListener('click', closeModal);
   btnCancel?.addEventListener('click', closeModal);
   modal?.addEventListener('click', (ev) => { if (ev.target === modal) closeModal(); });
 
-  // Previsualización de imagen
-  fileInput?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      fileNameText.textContent = file.name;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        previewBox.innerHTML = `<img src="${event.target.result}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" alt="Vista Previa">`;
-      };
-      reader.readAsDataURL(file);
+  const tbody = document.getElementById('usersTableBody');
+  tbody?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-user-edit');
+    if (!btn) return;
+
+    const userId = btn.getAttribute('data-id');
+    
+    // Cargar listas desplegables del modal de edición
+    await loadEditModalDropdowns();
+
+    // Abrir modal y asignar ID oculto
+    modal.style.display = 'flex';
+    document.getElementById('editUsrId').value = userId;
+
+    // Rellenar con los datos disponibles en la fila de la tabla para agilizar
+    const row = btn.closest('tr');
+    try {
+      document.getElementById('editUsrNombre').value = row.children[0].querySelector('strong')?.textContent.trim() || '';
+      document.getElementById('editUsrSegundoNombre').value = row.children[1].textContent.trim() !== '-' ? row.children[1].textContent.trim() : '';
+      document.getElementById('editUsrPrimerApellido').value = row.children[2].textContent.trim() !== 'N/A' ? row.children[2].textContent.trim() : '';
+      document.getElementById('editUsrSegundoApellido').value = row.children[3].textContent.trim() !== 'N/A' ? row.children[3].textContent.trim() : '';
+      document.getElementById('editUsrNumId').value = row.children[4].textContent.trim() !== 'N/A' ? row.children[4].textContent.trim() : '';
+      document.getElementById('editUsrEmail').value = row.children[5].textContent.trim() !== 'N/A' ? row.children[5].textContent.trim() : '';
+    } catch (err) {
+      console.warn('No se pudieron extraer todos los campos de la fila.', err);
     }
   });
 
-  // Envío del formulario
+  // Envío del formulario de actualización consumiendo el método de la API
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const btnSubmit = document.getElementById('btnSubmitUser');
+    const userId = document.getElementById('editUsrId').value;
+    const btnSubmit = document.getElementById('btnSubmitEditUser');
     const originalText = btnSubmit.textContent;
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Guardando...';
 
-    // Se ajustan los nombres exactamente con las propiedades que espera UsuarioBasicoDtoReq en Java
-    // 1. Objeto interno que mapea exactamente con el esquema "body" de la API
- const bodyData = {
-      nombre: document.getElementById('usrNombre').value.trim(),
-      segundoNombre: document.getElementById('usrSegundoNombre').value.trim() || null,
-      primerApellido: document.getElementById('usrPrimerApellido').value.trim(),
-      segundoApellido: document.getElementById('usrSegundoApellido').value.trim(),
-      fechaNacimiento: document.getElementById('usrFechaNac').value,
-      numeroIdentificacion: document.getElementById('usrNumId').value.trim(),
-      id_tipo_identificacion: parseInt(document.getElementById('usrTipoId').value) || 1,
-      id_rol: parseInt(document.getElementById('usrRol').value) || 2,
-      email: document.getElementById('usrEmail').value.trim(),
-      password: document.getElementById('usrPassword').value
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Actualizando...';
+
+    const bodyData = {
+      nombre: document.getElementById('editUsrNombre').value.trim(),
+      segundoNombre: document.getElementById('editUsrSegundoNombre').value.trim() || null,
+      primerApellido: document.getElementById('editUsrPrimerApellido').value.trim(),
+      segundoApellido: document.getElementById('editUsrSegundoApellido').value.trim(),
+      fechaNacimiento: document.getElementById('editUsrFechaNac').value,
+      numeroIdentificacion: document.getElementById('editUsrNumId').value.trim(),
+      id_tipo_identificacion: parseInt(document.getElementById('editUsrTipoId').value) || 1,
+      id_rol: parseInt(document.getElementById('editUsrRol').value) || 2,
+      email: document.getElementById('editUsrEmail').value.trim(),
+      password: document.getElementById('editUsrPassword').value
     };
 
-    const formData = new FormData();
-    formData.append(
-      'body', 
-      new Blob([JSON.stringify(bodyData)], { type: 'application/json' })
-    );
-
-    const imgFile = document.getElementById('usrImgPerfil')?.files[0];
-    if (imgFile) {
-      formData.append('imgPerfil', imgFile);
-    }
-
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER}`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        alert('¡Usuario registrado con éxito desde gestión!');
-        // Aquí limpias tu formulario o recargas tu tabla de usuarios
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Detalles del error:', errorData);
-        alert(`Error: ${errorData.message || 'No se pudo registrar el usuario'}`);
-      }
+      await updateUser(userId, bodyData);
+      alert('¡Usuario actualizado con éxito!');
+      closeModal();
+      fetchAndRenderUsers(); // Refrescar la tabla
     } catch (error) {
-      console.error('Error de conexión:', error);
-      alert('Error de conexión con el servidor.');
+      console.error('Error al actualizar:', error);
+      alert(`Error: ${error.message}`);
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.textContent = originalText;
@@ -346,11 +409,11 @@ function setupModalEvents() {
 }
 
 /**
- * Carga los combos de select para Tipos de Identificación y Roles
+ * Carga los select de Tipos de Identificación y Roles para Edición
  */
-async function loadModalDropdowns() {
-  const selectTipoId = document.getElementById('usrTipoId');
-  const selectRol = document.getElementById('usrRol');
+async function loadEditModalDropdowns() {
+  const selectTipoId = document.getElementById('editUsrTipoId');
+  const selectRol = document.getElementById('editUsrRol');
 
   try {
     const resTipos = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TIPO_IDENTIFICACIONES}`);
@@ -379,9 +442,259 @@ async function loadModalDropdowns() {
   }
 }
 
+/**
+ * Configura los eventos del Modal de Detalles
+ */
+/**
+ * Configura los eventos del Modal de Detalles
+ */
+/**
+ * Configura los eventos del Modal de Detalles
+ */
+/**
+ * Configura los eventos del Modal de Detalles
+ */
+function setupDetailsModalEvents() {
+  const modal = document.getElementById('userDetailsModal');
+  const btnClose = document.getElementById('closeUserDetailsModal');
+  const bodyContainer = document.getElementById('userDetailsBody');
+
+  const closeModal = () => { modal.style.display = 'none'; };
+
+  btnClose?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (ev) => { if (ev.target === modal) closeModal(); });
+
+  const tbody = document.getElementById('usersTableBody');
+  tbody?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-user-details');
+    if (!btn) return;
+
+    const userId = btn.getAttribute('data-id');
+    const row = btn.closest('tr');
+    
+    const imgElement = row?.children[0].querySelector('img');
+    const initialText = row?.children[0].querySelector('div > div')?.textContent?.trim() || '👤';
+
+    modal.style.display = 'flex';
+    bodyContainer.innerHTML = `<div style="grid-column: span 2; text-align: center; padding: 20px; color: #64748b;">Cargando detalles...</div>`;
+
+    try {
+      const details = await getUserDetails(userId);
+      
+      let bigAvatarHtml = '';
+      if (imgElement && imgElement.src) {
+        bigAvatarHtml = `<img id="modalProfileImg" src="${imgElement.src}" alt="Foto de perfil" title="Haz clic para cambiar la foto" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" />`;
+      } else {
+        bigAvatarHtml = `<div id="modalProfileImg" title="Haz clic para cambiar la foto" style="width: 120px; height: 120px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 600; color: #475569; border: 4px solid #cbd5e1; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${initialText}</div>`;
+      }
+
+      bodyContainer.innerHTML = `
+        <div style="grid-column: span 2; display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; position: relative;">
+          ${bigAvatarHtml}
+          <span style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">(Haz clic en la foto para cambiarla)</span>
+          <input type="file" id="inputUploadFoto" accept="image/*" style="display: none;" />
+          <h4 style="margin: 8px 0 0 0; font-size: 1.05rem; color: #1e293b;">${details.nombreCompleto || row?.children[0].querySelector('strong')?.textContent || 'Usuario del Sistema'}</h4>
+          <span style="font-size: 0.8rem; color: #64748b;">${details.email || row?.children[5]?.textContent || ''}</span>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Tipo Identificación</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.tipoIdentificacion || 'N/A'}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Rol</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.rol || 'N/A'}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">País</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.pais || 'N/A'}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Departamento</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.departamento || 'N/A'}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Ciudad</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.ciudad || 'N/A'}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Barrio</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.barrio || 'N/A'}</p>
+        </div>
+        <div style="grid-column: span 2;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Complemento Dirección</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.complemento || 'N/A'}</p>
+        </div>
+        <div style="grid-column: span 2;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Más Detalles</label>
+          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.masDetalles || 'Ninguno'}</p>
+        </div>
+      `;
+
+      const profileContainer = document.getElementById('modalProfileImg');
+      const fileInput = document.getElementById('inputUploadFoto');
+
+      profileContainer?.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      fileInput?.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+          profileContainer.style.opacity = '0.5';
+          
+          // LLAMADO AL SERVICIO MODULARIZADO ENVIANDO EL ARCHIVO DIRECTAMENTE
+          const result = await updateProfilePhoto(userId, file);
+
+          // Generar URL temporal local para renderizar la imagen al instante
+          const localImageUrl = URL.createObjectURL(file);
+
+          // Actualizar visualmente la foto en el modal
+          if (profileContainer.tagName === 'IMG') {
+            profileContainer.src = localImageUrl;
+          } else {
+            const parent = profileContainer.parentNode;
+            const newImg = document.createElement('img');
+            newImg.id = 'modalProfileImg';
+            newImg.src = localImageUrl;
+            newImg.alt = 'Foto de perfil';
+            newImg.style.cssText = "width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: opacity 0.2s;";
+            newImg.title = "Haz clic para cambiar la foto";
+            newImg.addEventListener('click', () => fileInput.click());
+            parent.replaceChild(newImg, profileContainer);
+          }
+
+          alert(result.message || 'Foto de perfil actualizada correctamente');
+          
+          if (typeof fetchAndRenderUsers === 'function') fetchAndRenderUsers();
+
+        } catch (err) {
+          console.error(err);
+          alert('No se pudo actualizar la foto de perfil.');
+        } finally {
+          profileContainer.style.opacity = '1';
+        }
+      });
+
+    } catch (error) {
+      bodyContainer.innerHTML = `<div style="grid-column: span 2; text-align: center; color: #ef4444; padding: 20px;">No se pudieron cargar los detalles del usuario.</div>`;
+    }
+  });
+}
+/**
+ * Configura la apertura, cierre y envío del formulario del modal de creación de usuarios
+ */
+function setupModalEvents() {
+  const modal = document.getElementById('createUserModal');
+  const btnNew = document.getElementById('btnNewUser');
+  const btnClose = document.getElementById('closeUserModal');
+  const btnCancel = document.getElementById('btnCancelUserModal');
+  const form = document.getElementById('createUserForm');
+
+  const fileInput = document.getElementById('usrImg');
+  const previewBox = document.getElementById('usrAvatarPreview');
+  const fileNameText = document.getElementById('usrFileName');
+
+  btnNew?.addEventListener('click', () => {
+    loadModalDropdowns();
+    modal.style.display = 'flex';
+  });
+
+  const closeModal = () => {
+    modal.style.display = 'none';
+    form.reset();
+    previewBox.innerHTML = '👤';
+    fileNameText.textContent = 'JPG, PNG o WEBP';
+  };
+
+  btnClose?.addEventListener('click', closeModal);
+  btnCancel?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (ev) => { if (ev.target === modal) closeModal(); });
+
+  fileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      fileNameText.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        previewBox.innerHTML = `<img src="${event.target.result}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" alt="Vista Previa">`;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btnSubmitUser');
+    const originalText = btnSubmit.textContent;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Guardando...';
+
+    const bodyData = {
+      nombre: document.getElementById('usrNombre').value.trim(),
+      segundoNombre: document.getElementById('usrSegundoNombre').value.trim() || null,
+      primerApellido: document.getElementById('usrPrimerApellido').value.trim(),
+      segundoApellido: document.getElementById('usrSegundoApellido').value.trim(),
+      fechaNacimiento: document.getElementById('usrFechaNac').value,
+      numeroIdentificacion: document.getElementById('usrNumId').value.trim(),
+      id_tipo_identificacion: parseInt(document.getElementById('usrTipoId').value) || 1,
+      id_rol: parseInt(document.getElementById('usrRol').value) || 2,
+      email: document.getElementById('usrEmail').value.trim(),
+      password: document.getElementById('usrPassword').value
+    };
+
+    const formData = new FormData();
+    formData.append('body', new Blob([JSON.stringify(bodyData)], { type: 'application/json' }));
+
+    const imgFile = document.getElementById('usrImg')?.files[0];
+    if (imgFile) formData.append('imgPerfil', imgFile);
+
+    try {
+      await createUser(formData);
+      alert('¡Usuario registrado con éxito desde gestión!');
+      closeModal();
+      fetchAndRenderUsers();
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = originalText;
+    }
+  });
+}
+/**
+ * Carga los combos de select para Tipos de Identificación y Roles (Creación)
+ */
+async function loadModalDropdowns() {
+  const selectTipoId = document.getElementById('usrTipoId');
+  const selectRol = document.getElementById('usrRol');
+
+  try {
+    const resTipos = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TIPO_IDENTIFICACIONES}`);
+    if (resTipos.ok) {
+      const data = await resTipos.json();
+      const list = Array.isArray(data) ? data : (data.data || data.content || []);
+      selectTipoId.innerHTML = list.length 
+        ? list.map(t => `<option value="${t.id || t.id_tipo_identificacion}">${(t.nombre || t.descripcion).toUpperCase()}</option>`).join('')
+        : '<option value="1">CÉDULA DE CIUDADANÍA</option>';
+    }
+  } catch (err) { selectTipoId.innerHTML = '<option value="1">CÉDULA DE CIUDADANÍA</option>'; }
+
+  try {
+    const resRoles = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROLES}`);
+    if (resRoles.ok) {
+      const data = await resRoles.json();
+      const list = Array.isArray(data) ? data : (data.data || data.content || []);
+      selectRol.innerHTML = list.length 
+        ? list.map(r => `<option value="${r.id || r.id_rol}">${(r.nombre || r.name).toUpperCase()}</option>`).join('')
+        : '<option value="2">LECTOR / ESTUDIANTE</option>';
+    }
+  } catch (err) { selectRol.innerHTML = '<option value="2">LECTOR / ESTUDIANTE</option>'; }
+}
+
 function setupFilterEvents() {
   let debounceTimeout;
-
   const onInputFilter = () => {
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
@@ -391,7 +704,6 @@ function setupFilterEvents() {
       currentFilters.num_identificacion = document.getElementById('filterIdentificacion')?.value.trim() || '';
       currentFilters.id_rol = document.getElementById('filterRol')?.value || '';
       currentFilters.isDelete = document.getElementById('filterIsDelete')?.value || '';
-
       fetchAndRenderUsers();
     }, 300);
   };
