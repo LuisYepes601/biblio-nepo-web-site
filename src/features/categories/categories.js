@@ -491,3 +491,4 @@ export function closeCategoryModal() {
         modal.style.display = 'none';
     }
 }
+

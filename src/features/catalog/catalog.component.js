@@ -1,4 +1,4 @@
-import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles } from './catalog.api.js';
+import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles,fetchCategoriasPorLibro } from './catalog.api.js';
 import { getStateMessageHTML } from '../../core/components/state-message.js';
 
 const PALETTE = ['#6E2A2A', '#1C2536', '#9A6A34', '#3B5B45', '#4A3B6B', '#7A4A2A', '#2E4A5E', '#5C2E4A'];
@@ -445,8 +445,7 @@ export function initCatalog() {
       console.error('Error al leer los datos del libro:', err);
     }
   });
-
-  function openBookModal(book) {
+function openBookModal(book) {
     let modal = document.getElementById('bookModal');
 
     if (!modal) {
@@ -478,9 +477,9 @@ export function initCatalog() {
     const anio = book.fechaPublicacion ? new Date(book.fechaPublicacion).getFullYear() : 'No especificado';
     const formato = book.formatoLibro || 'Digital';
     const descripcion = book.descripcion || 'No hay una descripción detallada disponible para este libro.';
-    const idioma = book.idioma ? `<p class="modal-idioma"><strong>Idioma:</strong> ${book.idioma}</p>` : '';
-    const pais = book.paisPublicacion ? `<p class="modal-pais"><strong>País de publicación:</strong> ${book.paisPublicacion}</p>` : '';
-    
+    const idioma = book.idioma ? `<p class="modal-idioma" style="margin: 6px 0; color: #4b5563;"><strong>Idioma:</strong> ${book.idioma}</p>` : '';
+    const pais = book.paisPublicacion ? `<p class="modal-pais" style="margin: 6px 0; color: #4b5563;"><strong>País de publicación:</strong> ${book.paisPublicacion}</p>` : '';
+
     const portadaImgUrl = book.portadaUrl;
     const portada = portadaImgUrl 
       ? `<img src="${portadaImgUrl}" alt="${titulo}" class="modal-cover" style="width: 100%; max-height: 320px; object-fit: cover; border-radius: 8px;">` 
@@ -563,6 +562,14 @@ export function initCatalog() {
           <p style="margin: 6px 0; color: #4b5563;"><strong>Editorial:</strong> ${editorial} (${anio})</p>
           ${idioma}
           ${pais}
+
+          <div id="modalCategoriesContainer" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+              <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+            </strong>
+            <span style="color: #6b7280; font-size: 0.85rem;">Cargando...</span>
+          </div>
+
           <div style="margin-top: 14px;">
             <strong style="color: #111827; display: block; margin-bottom: 4px;">Descripción:</strong>
             <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">${descripcion}</p>
@@ -581,9 +588,44 @@ export function initCatalog() {
 
     modal.style.display = 'flex';
 
+    // Carga asíncrona de las categorías asociadas al libro
+    const idLibro = book.id || book.idLibro || book.id_libro;
+    if (idLibro) {
+      fetchCategoriasPorLibro(idLibro).then(categorias => {
+        const container = modal.querySelector('#modalCategoriesContainer');
+        if (!container) return;
+
+        if (!categorias || categorias.length === 0) {
+          container.innerHTML = `
+            <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+              <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+            </strong>
+            <span style="color: #9ca3af; font-size: 0.85rem;"><em>Sin categorías asignadas</em></span>
+          `;
+          return;
+        }
+
+        const badges = categorias.map(cat => {
+          const nombre = typeof cat === 'object' 
+            ? (cat.nombre || cat.nombreCategoria || cat.categoria?.nombre || cat.name) 
+            : cat;
+          return `<span style="background: #eeefff; color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${nombre}</span>`;
+        }).join('');
+
+        container.innerHTML = `
+          <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+            <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+          </strong>
+          ${badges}
+        `;
+      }).catch(err => {
+        console.error('Error al obtener categorías:', err);
+      });
+    }
+
     const autorLibro = book.autor || book.nombre_autor;
-    if (autorLibro && book.id) {
-      loadModalRecommendations(book, book.id);
+    if (autorLibro && idLibro) {
+      loadModalRecommendations(book, idLibro);
     } else {
       const recContainer = modal.querySelector('#modalRecommendedGrid');
       if (recContainer) recContainer.innerHTML = '<p style="color: var(--muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay recomendaciones disponibles para este autor.</p>';
@@ -607,7 +649,7 @@ export function initCatalog() {
         }
       });
     }
-  }
+}
 
   async function loadModalRecommendations(bookOrAuthorData, currentBookId) {
     const container = document.getElementById('modalRecommendedGrid');
@@ -782,3 +824,4 @@ export function initCatalog() {
 
   loadInitialData();
 }
+

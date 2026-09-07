@@ -1,0 +1,389 @@
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: #eeefff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --bg-main: #f8fafc;
+  --card-bg: #ffffff;
+  --border-color: #e2e8f0;
+  --success: #10b981;
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.recovery-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* --- LADO IZQUIERDO (IMAGEN & ANIMACIONES) --- */
+.recovery-image-side {
+  display: none;
+  flex: 1.2;
+  background: url('https://images.unsplash.com/photo-1521587760476-6c12a4b040da?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;
+  position: relative;
+  overflow: hidden;
+}
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.88) 0%, rgba(15, 23, 42, 0.95) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: white;
+  text-align: center;
+  backdrop-filter: blur(2px);
+}
+
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  animation: float 8s infinite ease-in-out;
+  pointer-events: none;
+}
+
+.shape-1 { width: 180px; height: 180px; top: -10%; left: -5%; animation-delay: 0s; }
+.shape-2 { width: 250px; height: 250px; bottom: -10%; right: -5%; animation-delay: 3s; }
+
+.image-content {
+  max-width: 420px;
+  z-index: 2;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.logo-icon {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  color: #c7d2fe;
+  display: inline-block;
+  animation: pulseLogo 3s infinite ease-in-out;
+}
+
+.image-content h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+
+.dynamic-quote {
+  font-size: 1.05rem;
+  opacity: 0.9;
+  line-height: 1.6;
+  min-height: 50px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.dynamic-quote.fade-out {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.floating-badge {
+  margin-top: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+/* --- LADO DERECHO (FORMULARIO) --- */
+.recovery-form-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: var(--bg-main);
+  overflow-y: auto;
+}
+
+.recovery-card {
+  background: var(--card-bg);
+  width: 100%;
+  max-width: 440px;
+  border-radius: var(--radius);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.07);
+  border: 1px solid var(--border-color);
+  padding: 40px 32px;
+  animation: scaleIn 0.5s ease-out;
+}
+
+.brand-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.brand-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.brand-header p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Selector de pestañas animado */
+.tabs-container {
+  display: flex;
+  background: #f1f5f9;
+  padding: 5px;
+  border-radius: 12px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  z-index: 1;
+}
+
+.tab-btn.active {
+  color: var(--primary);
+}
+
+.tab-glider {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: calc(50% - 5px);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Transición entre Vistas */
+.view-panel {
+  animation: fadeIn 0.35s ease-in-out;
+}
+
+.view-panel.hidden {
+  display: none;
+}
+
+/* Inputs Interactivos */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper i {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+}
+
+.form-control:focus {
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.input-wrapper:focus-within i {
+  color: var(--primary);
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Botón con estado de carga */
+.btn-submit {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.btn-submit:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+.btn-submit.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Alertas animadas */
+.alert-box {
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+  display: none;
+  text-align: center;
+  font-weight: 500;
+  animation: shake 0.4s ease-in-out;
+}
+
+.alert-box.danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Vista de Éxito */
+.success-view {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.success-icon {
+  width: 70px;
+  height: 70px;
+  background: #dcfce7;
+  color: var(--success);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 20px;
+  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.back-to-login {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.back-to-login a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.back-to-login a:hover {
+  color: var(--primary);
+  transform: translateX(-3px);
+}
+
+/* --- ANIMACIONES KEYFRAMES --- */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes pulseLogo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@media (min-width: 900px) {
+  .recovery-image-side {
+    display: flex;
+  }
+}

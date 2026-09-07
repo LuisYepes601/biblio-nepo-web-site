@@ -128,6 +128,34 @@ export async function fetchLibroDetalles(id) {
 }
 
 /**
+ * Obtiene las categorías asociadas a un libro específico.
+ * @param {number|string} idLibro - ID del libro a consultar
+ * @returns {Promise<Array>} Lista de categorías asociadas
+ */
+export async function fetchCategoriasPorLibro(idLibro) {
+  if (!idLibro) return [];
+
+  const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS}/${idLibro}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error al obtener categorías del libro: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.content || data.categorias || []);
+  } catch (error) {
+    console.warn(`Error en fetchCategoriasPorLibro para ID ${idLibro}:`, error);
+    return [];
+  }
+}
+
+/**
  * Función de servicio pura para obtener los libros recomendados por autor
  * (excluyendo el libro actual que se está viendo).
  */

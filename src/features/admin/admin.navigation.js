@@ -1,8 +1,12 @@
 import { loadDashboardView } from './admin-dashboard.js';
 import { loadUsersView } from '../users/users.js';
-import { loadAuthorsView} from '../autors/authors.js';
+import { loadAuthorsView } from '../autors/authors.js';
 import { loadBooksView } from '../books/books.js'; 
 import { loadCategoriesView } from '../categories/categories.js';
+import { loadBookGenresView } from '../book-genres/book-genres.js';
+import { loadRolesView } from '../roles/roles.js';
+import { loadFormatsView } from '../formats/formats.js';
+import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
 
 export function initAdminNavigation() {
   const container = document.getElementById('admin-sidebar-container');
@@ -31,9 +35,13 @@ export function initAdminNavigation() {
           <ul id="adminNavList">
             <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
             <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book"></i> Catálogo Libros</a></li>
-            <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-tags"></i> Categorías</a></li>
+            <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree"></i> Categorías</a></li>
+            <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags"></i> Géneros Libro</a></li>
+            <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook"></i> Formatos Libros</a></li>
             <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather"></i> Autores</a></li>
+            <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card"></i> Tipos de Documento</a></li>
             <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users"></i> Gestión Usuarios</a></li>
+            <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield"></i> Gestión Roles</a></li>
             <li><a href="#prestamos" data-view="loans"><i class="fa-solid fa-bookmark"></i> Préstamos Activos</a></li>
             <li><a href="#configuracion" data-view="settings"><i class="fa-solid fa-gear"></i> Configuración</a></li>
           </ul>
@@ -47,6 +55,13 @@ export function initAdminNavigation() {
       </div>
     </aside>
   `;
+
+  const btnGoToPublic = container.querySelector('#btnGoToPublic');
+  if (btnGoToPublic) {
+    btnGoToPublic.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+  }
 
   const navItems = container.querySelectorAll('#adminNavList li');
   navItems.forEach(item => {
@@ -63,10 +78,18 @@ export function initAdminNavigation() {
         loadBooksView();
       } else if (view === 'categories') {
         loadCategoriesView();
+      } else if (view === 'genres') {
+        loadBookGenresView();
+      } else if (view === 'formats') {
+        loadFormatsView();
       } else if (view === 'authors') {
         loadAuthorsView();
+      } else if (view === 'id-types') {
+        loadIdentificationTypesView();
       } else if (view === 'users') {
         loadUsersView();
+      } else if (view === 'roles') {
+        loadRolesView();
       }
     });
   });

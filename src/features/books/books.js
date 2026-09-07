@@ -1,5 +1,5 @@
 import { fetchBooks, createBook, fetchBookDetails, fetchFormatosLibro } from './books.api.js';
-import { fetchIdiomas, fetchCategorias, fetchGeneros, fetchTiposLibro } from '../catalog/catalog.api.js';
+import { fetchIdiomas, fetchCategorias, fetchGeneros, fetchTiposLibro , fetchCategoriasPorLibro} from '../catalog/catalog.api.js';
 import { fetchAuthors } from '../autors/authors.api.js';
 
 let currentPage = 0;
@@ -229,6 +229,16 @@ async function openBookDetailsView(bookId) {
           </div>
         </div>
 
+        <!-- CONTENEDOR DINÁMICO DE CATEGORÍAS -->
+        <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #f1f5f9;">
+          <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 500; margin-bottom: 6px;">
+            <i class="fa-solid fa-tags" style="color: #6366f1; margin-right: 4px;"></i> Categorías
+          </span>
+          <div id="bookCategoriesList" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            <span style="color: #64748b; font-size: 0.85rem;">Cargando categorías...</span>
+          </div>
+        </div>
+
         <div>
           <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; color: #475569;">Descripción</h4>
           <p style="margin: 0; font-size: 0.95rem; line-height: 1.6; color: #334155;">${book.descripcion || 'No hay descripción disponible para este ejemplar.'}</p>
@@ -245,6 +255,30 @@ async function openBookDetailsView(bookId) {
   `;
 
   document.getElementById('backToBooksBtn').addEventListener('click', loadBooksView);
+
+  // Carga asíncrona de las categorías del libro desde el endpoint /api/v1/categoria-libros/{id_libro}
+  if (bookId) {
+    fetchCategoriasPorLibro(bookId).then(categorias => {
+      const catContainer = document.getElementById('bookCategoriesList');
+      if (!catContainer) return;
+
+      if (!categorias || categorias.length === 0) {
+        catContainer.innerHTML = `<span style="color: #94a3b8; font-size: 0.85rem; font-style: italic;">Sin categorías asignadas</span>`;
+        return;
+      }
+
+      const badges = categorias.map(cat => {
+        const nombre = typeof cat === 'object' 
+          ? (cat.nombre || cat.nombreCategoria || cat.categoria?.nombre || cat.name) 
+          : cat;
+        return `<span style="background: #e0e7ff; color: #4338ca; border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${nombre.toUpperCase()}</span>`;
+      }).join('');
+
+      catContainer.innerHTML = badges;
+    }).catch(err => {
+      console.error('Error al obtener categorías:', err);
+    });
+  }
 
   // Llamamos a la función pasando explícitamente el authorId capturado
   await loadAndRenderRelatedBooks(authorId, typeof authorName === 'string' ? authorName : '', bookId);

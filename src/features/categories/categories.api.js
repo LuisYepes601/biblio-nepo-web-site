@@ -79,4 +79,14 @@ export async function deleteCategoria(id) {
     console.error('Error en deleteCategoria:', error);
     throw error;
   }
+
+  function getdetailsbyId(id) {
+    return fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS}/${id}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error al obtener detalles de la categoría: ${response.status}`);
+        }
+        return response.json();
+      });
+  }
 }

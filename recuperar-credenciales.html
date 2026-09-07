@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiblioNepo - Recuperación de Credenciales</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="src/features/recovery/recovery.css">
+</head>
+<body>
+
+  <div class="recovery-layout">
+
+    <!-- Lado Izquierdo: Imagen & Frases Dinámicas -->
+    <div class="recovery-image-side">
+      <div class="floating-shape shape-1"></div>
+      <div class="floating-shape shape-2"></div>
+      
+      <div class="image-overlay">
+        <div class="image-content">
+          <div class="logo-icon"><i class="fa-solid fa-book-open"></i></div>
+          <h2>BiblioNepo</h2>
+          <p id="dynamicQuote" class="dynamic-quote">Tu portal hacia el conocimiento. Recupera tu acceso y sigue explorando nuestras colecciones.</p>
+          
+          <div class="floating-badge">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Proceso 100% Seguro</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lado Derecho: Formulario -->
+    <div class="recovery-form-side">
+      <main class="recovery-card">
+        
+        <header class="brand-header">
+          <h1>Recupera tu acceso</h1>
+          <p>Selecciona la opción que requieras recuperar</p>
+        </header>
+
+        <!-- Pestañas dinámicas con deslizador -->
+        <div class="tabs-container" id="tabGroup">
+          <div class="tab-glider" id="tabGlider"></div>
+          <button class="tab-btn active" id="tabPassword" data-view="viewPassword">
+            Contraseña
+          </button>
+          <button class="tab-btn" id="tabUsername" data-view="viewUsername">
+            Usuario
+          </button>
+        </div>
+
+        <!-- Alertas -->
+        <div id="alertBox" class="alert-box danger"></div>
+
+        <!-- Vista Recuperar Contraseña -->
+        <div id="viewPassword" class="view-panel">
+          <form id="formRecoverPassword" novalidate>
+            <div class="form-group">
+              <label for="pwdEmail">Correo Electrónico Registrado</label>
+              <div class="input-wrapper">
+                <i class="fa-regular fa-envelope"></i>
+                <input type="email" id="pwdEmail" class="form-control" placeholder="ejemplo@biblionepo.edu.co" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmitPassword">
+              <span>Enviar enlace de recuperación</span>
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Vista Recuperar Usuario -->
+        <div id="viewUsername" class="view-panel hidden">
+          <form id="formRecoverUsername" novalidate>
+            <div class="form-group">
+              <label for="userDocument">Número de Documento</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-id-card"></i>
+                <input type="text" id="userDocument" class="form-control" placeholder="Ingrese su número de documento" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="userEmail">Correo Electrónico Vinculado</label>
+              <div class="input-wrapper">
+                <i class="fa-regular fa-envelope"></i>
+                <input type="email" id="userEmail" class="form-control" placeholder="ejemplo@biblionepo.edu.co" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmitUsername">
+              <span>Consultar Usuario</span>
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Vista de Éxito -->
+        <div id="viewSuccess" class="view-panel success-view hidden">
+          <div class="success-icon">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h3 id="successTitle">¡Solicitud enviada!</h3>
+          <p id="successMessage">Hemos enviado las instrucciones a tu correo electrónico registrado.</p>
+          
+          <button class="btn-submit" id="btnRetryRecovery">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Volver a intentar</span>
+          </button>
+        </div>
+
+        <footer class="back-to-login">
+          <a href="/index.html" class="btn-back-login">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Volver al Inicio de Sesión</span>
+          </a>
+        </footer>
+
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initRecoveryFeature } from './src/features/recovery/recovery.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      initRecoveryFeature();
+    });
+  </script>
+
+</body>
+</html>

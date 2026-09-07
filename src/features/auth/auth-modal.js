@@ -52,6 +52,13 @@ export function initAuthModal() {
               <label>Contraseña <span style="color: #ef4444;">*</span></label>
               <input type="password" id="loginPassword" required placeholder="••••••••">
               
+              <!-- ENLACE DE RECUPERACIÓN DE CREDENCIALES -->
+              <div style="text-align: right; margin-top: 6px; margin-bottom: 16px;">
+                <a href="./recuperar-credenciales.html" style="color: #64748b; font-size: 0.825rem; text-decoration: none; font-weight: 500;">
+                  ¿Olvidaste tu contraseña o usuario?
+                </a>
+              </div>
+
               <button type="submit" class="auth-submit-btn">Entrar a la cuenta</button>
             </form>
 
