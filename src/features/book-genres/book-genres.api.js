@@ -3,10 +3,30 @@ import { API_CONFIG } from '../../core/config/api.config.js';
 /**
  * Obtiene la lista paginada de géneros de libro.
  */
+
 export async function fetchBookGenres(page = 0, size = 10, search = '') {
   try {
     const params = new URLSearchParams({ page, size, nombre: search });
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GENEROS_LIBRO_ADMIN }?${params.toString()}`);
+    
+    // Recuperamos el token y limpiamos comillas extras por seguridad
+    let token = localStorage.getItem('authToken');
+    if (token) {
+      token = token.replace(/^["']|["']$/g, '');
+    }
+    
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GENEROS_LIBRO_ADMIN}?${params.toString()}`, {
+      method: 'GET',
+      headers: headers
+    });
+
     if (!response.ok) throw new Error('Error al obtener los géneros de libro.');
     return await response.json();
   } catch (error) {

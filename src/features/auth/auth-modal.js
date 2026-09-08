@@ -301,11 +301,104 @@ export function initAuthModal() {
       visualRegister.classList.add('active'); visualLogin.classList.remove('active');
     });
 
-    loginForm.addEventListener('submit', (e) => {
+    // Función auxiliar para decodificar JWT de forma segura en el frontend
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // --- MANEJO DE INICIO DE SESIÓN CON TOKEN, LOCALSTORAGE Y REDIRECCIÓN DE ROL ---
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      modal.style.display = 'none';
+      
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Entrando...';
+      submitBtn.disabled = true;
+
+      const credentials = {
+        email: document.getElementById('loginEmail').value.trim(),
+        password: document.getElementById('loginPassword').value
+      };
+
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(credentials)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // 1. Guardar el Token de autorización en localStorage
+          const token = data.token || data.accessToken || data.access_token;
+          if (token) {
+              localStorage.setItem('authToken', token);
+          }
+
+          let esAdmin = false;
+
+          // 2. Decodificar el token para extraer userId y comprobar el arreglo de roles
+          if (token) {
+              const decodedToken = parseJwt(token);
+              if (decodedToken) {
+                  if (decodedToken.id_user) {
+                      localStorage.setItem('userId', decodedToken.id_user);
+                  }
+
+                  // Validar dentro del array de roles que trae el token (ej: "authority": "ROLE_ADMIN")
+                  if (Array.isArray(decodedToken.rol)) {
+                      esAdmin = decodedToken.rol.some(r => {
+                          const authority = r.authority || r.nombre || '';
+                          return authority.toUpperCase().includes('ADMIN');
+                      });
+                  }
+              }
+          }
+
+          // 3. Respaldo por si el backend también manda propiedades de rol sueltas en la respuesta JSON
+          if (!esAdmin) {
+              const rolData = data.rol || data.nombreRol || data.id_rol || '';
+              if ((typeof rolData === 'string' && rolData.toUpperCase().includes('ADMIN')) || rolData === 1) {
+                  esAdmin = true;
+              }
+          }
+
+          alert('¡Inicio de sesión exitoso!');
+          modal.style.display = 'none';
+          loginForm.reset();
+          
+          // 4. Redirección inteligente según el rol detectado
+          if (esAdmin) {
+              window.location.href = 'admin.html'; // Redirige a la vista de admin
+          } else {
+              window.location.href = 'index.html'; // O recarga la vista normal de lector
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(`Error al iniciar sesión: ${errorData.message || 'Credenciales incorrectas'}`);
+        }
+      } catch (error) {
+        console.error('Error de conexión:', error);
+        alert('Error de conexión con el servidor al intentar iniciar sesión.');
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
     });
 
+    // --- MANEJO DE REGISTRO ---
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       

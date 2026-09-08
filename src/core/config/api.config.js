@@ -21,5 +21,6 @@ export const API_CONFIG = {
     RECOVERY_PASSWORD: '/api/v1/recuperar-credenciales',
     USUARIOS: '/api/v1/users',
     PERFIL: '/api/v1/perfil',
+    AUTH: '/api/v1/auth',
   }
 };
