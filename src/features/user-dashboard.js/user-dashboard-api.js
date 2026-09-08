@@ -43,4 +43,39 @@ export async function fetchPerfilDatosBasicos(id_user) {
   }
 
   return await response.json();
+}/**
+ * Actualiza los datos de un usuario por su ID
+ * @param {number|string} id_user - ID del usuario a actualizar
+ * @param {Object} userData - Objeto con los campos a actualizar (nombre, email, etc.)
+ */
+export async function updateUser(id_user, userData) {
+    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USUARIOS}/${id_user}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                // Si tu API requiere token de autenticación, descomenta la siguiente línea:
+                // 'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(userData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error al actualizar el usuario (Código: ${response.status})`);
+        }
+
+        // Si el backend retorna datos en formato JSON tras actualizar
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            return await response.json();
+        }
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Error en updateUser:', error);
+        throw error;
+    }
 }
