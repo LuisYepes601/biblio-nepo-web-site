@@ -60,9 +60,11 @@ async function cargarDatosUsuario() {
     const nameCard = document.getElementById('profile-name-card');
     const roleCard = document.getElementById('profile-role-card');
     const avatarImg = document.getElementById('profile-avatar');
+    const sideBarRol = document.getElementById('user-role')
     const sidebarAvatar = document.querySelector('.user-profile-card img, .user-avatar, img[alt*="Avatar"], .sidebar img');
     const sidebarName = document.querySelector('.user-profile-card .user-name, .user-info h4, .user-name');
     const welcomeTitle = document.getElementById('welcome-user-title');
+  
 
     // Asignación de valores en inputs
     if (nombreInput) { nombreInput.value = user.nombre || ''; nombreInput.disabled = false; }
@@ -87,6 +89,8 @@ async function cargarDatosUsuario() {
 
     // Actualización de avatar si existe URL
     const fotoUrl = user.urlFotoPerfil || user.fotoPerfilUrl;
+    sideBarRol.textContent=user.rol
+
     if (fotoUrl) {
       if (avatarImg) avatarImg.src = fotoUrl;
       if (sidebarAvatar) sidebarAvatar.src = fotoUrl;
