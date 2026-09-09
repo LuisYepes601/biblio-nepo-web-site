@@ -5,14 +5,14 @@ import { API_CONFIG } from '../../core/config/api.config.js';
  * @param {string|number} userId - ID del usuario.
  * @param {File} imageFile - Archivo de imagen seleccionado.
  */
-export async function updateProfilePhoto(userId, imageFile) {
+export async function updateProfilePhoto(userId, imageFile, token = localStorage.getItem('authToken')) {
   const formData = new FormData();
   formData.append('file', imageFile);
 
   const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PERFIL}/${userId}/foto-perfil`, {
     method: 'PUT',
     headers: {
-      // 'Authorization': 'Bearer ' + localStorage.getItem('token')
+      'Authorization': `Bearer ${token}`
     },
     body: formData
   });

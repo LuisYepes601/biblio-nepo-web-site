@@ -135,12 +135,22 @@ export async function fetchLibroDetalles(id) {
 export async function fetchCategoriasPorLibro(idLibro) {
   if (!idLibro) return [];
 
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS}/${idLibro}`;
 
   try {
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' }
+      headers
     });
 
     if (!response.ok) {

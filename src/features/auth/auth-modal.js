@@ -383,7 +383,7 @@ export function initAuthModal() {
           if (esAdmin) {
               window.location.href = 'admin.html'; // Redirige a la vista de admin
           } else {
-              window.location.href = 'index.html'; // O recarga la vista normal de lector
+              window.location.href = 'user-dashboard.html'; // O recarga la vista normal de lector
           }
         } else {
           const errorData = await response.json().catch(() => ({}));

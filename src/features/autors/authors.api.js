@@ -1,8 +1,12 @@
 import { API_CONFIG } from '../../core/config/api.config.js';
 
 export async function fetchAuthors(page = 0, size = 10, name = '', nameBook = '') {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }       
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
     let url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTORES_ADMIN}?page=${page}&size=${size}`;
     
     if (name && name.trim() !== '') {
@@ -26,8 +30,11 @@ export async function fetchAuthors(page = 0, size = 10, name = '', nameBook = ''
 }
 
 export async function fetchAuthorDetails(id) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
   try {
-    const token = localStorage.getItem('token');
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTORES_ADMIN}/${id}/details`, {
       method: 'GET',
       headers: { 'Accept': '*/*', 'Authorization': `Bearer ${token}` }
@@ -42,7 +49,7 @@ export async function fetchAuthorDetails(id) {
 
 export async function createAuthor(authorData, imageFile = null) {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
     const formData = new FormData();
 
     if (imageFile) {
@@ -75,7 +82,7 @@ export async function createAuthor(authorData, imageFile = null) {
 
 export async function updateAuthor(id, authorData, imageFile = null) {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
     const formData = new FormData();
 
     // Adjuntar la imagen si el usuario seleccionó una nueva (Opcional)
@@ -109,7 +116,7 @@ export async function updateAuthor(id, authorData, imageFile = null) {
 
 export async function fetchPaises() {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
     // Verificamos si en API_CONFIG.ENDPOINTS existe PAISES, de lo contrario usamos la ruta estándar por defecto
     const endpointPais = API_CONFIG.ENDPOINTS.PAISES || '/api/v1/paises';
     

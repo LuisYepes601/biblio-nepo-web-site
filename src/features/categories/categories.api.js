@@ -19,8 +19,16 @@ export async function fetchCategorias(page = 0, size = 10, nombre = '') {
  * Obtiene una categoría por su ID.
  */
 export async function fetchCategoriaById(id) {
+ const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS}/${id}`);
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS}/${id}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     if (!response.ok) throw new Error('Error al obtener la categoría.');
     return await response.json();
   } catch (error) {
@@ -33,10 +41,15 @@ export async function fetchCategoriaById(id) {
  * Crea una nueva categoría.
  */
 export async function createCategoria(data) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS_ADMIN}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('No se pudo crear la categoría.');
@@ -51,10 +64,15 @@ export async function createCategoria(data) {
  * Actualiza una categoría existente.
  */
 export async function updateCategoria(id, data) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS_ADMIN}/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('No se pudo actualizar la categoría.');
@@ -69,9 +87,15 @@ export async function updateCategoria(id, data) {
  * Elimina una categoría por ID.
  */
 export async function deleteCategoria(id) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS_LIBROS_ADMIN}/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) throw new Error('No se pudo eliminar la categoría.');
     return true;

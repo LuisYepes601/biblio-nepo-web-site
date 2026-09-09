@@ -1,4 +1,4 @@
-import { loadDashboardView } from './admin-dashboard.js';
+import { loadDashboardView, switchView } from './admin-dashboard.js';
 import { loadUsersView } from '../users/users.js';
 import { loadAuthorsView } from '../autors/authors.js';
 import { loadBooksView } from '../books/books.js'; 
@@ -20,7 +20,8 @@ export function initAdminNavigation() {
           <span>BiblioNepo</span>
         </div>
 
-        <div class="user-profile-card">
+        <!-- Tarjeta de perfil interactiva para ir a la vista de perfil -->
+        <div class="user-profile-card" id="btnProfileView" style="cursor: pointer;">
           <div class="user-info">
             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
             <div>
@@ -56,6 +57,7 @@ export function initAdminNavigation() {
     </aside>
   `;
 
+  // Botón para ir al sitio público
   const btnGoToPublic = container.querySelector('#btnGoToPublic');
   if (btnGoToPublic) {
     btnGoToPublic.addEventListener('click', () => {
@@ -63,6 +65,21 @@ export function initAdminNavigation() {
     });
   }
 
+  // Evento para hacer clic en la tarjeta de perfil
+  const btnProfileView = container.querySelector('#btnProfileView');
+  if (btnProfileView) {
+    btnProfileView.addEventListener('click', () => {
+      container.querySelectorAll('#adminNavList li').forEach(l => l.classList.remove('active'));
+      
+      // 1. Carga la estructura contenedora principal por si estabas en otra vista
+      loadDashboardView();
+      
+      // 2. Cambia a la pestaña de perfil
+      switchView('profile');
+    });
+  }
+
+  // Navegación del menú lateral principal
   const navItems = container.querySelectorAll('#adminNavList li');
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
@@ -74,6 +91,7 @@ export function initAdminNavigation() {
       
       if (view === 'dashboard') {
         loadDashboardView();
+        switchView('dashboard'); 
       } else if (view === 'catalog') {
         loadBooksView();
       } else if (view === 'categories') {

@@ -1,6 +1,6 @@
 import { getAllUsers, createUser, updateUser, getUserDetails } from './users.api.js';
 import { API_CONFIG } from '../../core/config/api.config.js';
-import{updateProfilePhoto} from '../perfil/perfilApi.js'
+import { updateProfilePhoto } from '../perfil/perfilApi.js';
 
 let currentFilters = {
   nombre: '',
@@ -325,9 +325,97 @@ function renderUsersTable(users) {
 }
 
 /**
- * Configura los eventos del Modal de Edición de Usuario
+ * Configura los eventos del Modal de Edición de Usuario (Cargando datos actuales)
  */
-  0
+function setupEditModalEvents() {
+  const modal = document.getElementById('editUserModal');
+  const btnClose = document.getElementById('closeEditUserModal');
+  const btnCancel = document.getElementById('btnCancelEditModal');
+  const form = document.getElementById('editUserForm');
+
+  const closeModal = () => {
+    modal.style.display = 'none';
+    form.reset();
+  };
+
+  btnClose?.addEventListener('click', closeModal);
+  btnCancel?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (ev) => { if (ev.target === modal) closeModal(); });
+
+  const tbody = document.getElementById('usersTableBody');
+  tbody?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-user-edit');
+    if (!btn) return;
+
+    const userId = btn.getAttribute('data-id');
+    
+    // Primero cargamos los selects y mostramos el modal
+    await loadEditModalDropdowns();
+    modal.style.display = 'flex';
+
+    // Rellenamos el formulario consultando los detalles reales del usuario seleccionado
+    try {
+      const response = await getUserDetails(userId);
+      
+      if (response) {
+        document.getElementById('editUsrId').value = userId;
+        document.getElementById('editUsrNombre').value = response.nombre || '';
+        document.getElementById('editUsrSegundoNombre').value = response.segundoNombre || '';
+        document.getElementById('editUsrPrimerApellido').value = response.primerApellido || '';
+        document.getElementById('editUsrSegundoApellido').value = response.segundoApellido || '';
+        document.getElementById('editUsrNumId').value = response.numeroIdentificacion || '';
+        document.getElementById('editUsrEmail').value = response.email || '';
+        
+        if (response.id_tipo_identificacion) {
+          document.getElementById('editUsrTipoId').value = response.id_tipo_identificacion;
+        }
+        if (response.id_rol) {
+          document.getElementById('editUsrRol').value = response.id_rol;
+        }
+        if (response.fechaNacimiento) {
+          document.getElementById('editUsrFechaNac').value = response.fechaNacimiento.split('T')[0];
+        }
+      }
+    } catch (error) {
+      console.error('Error al cargar datos para editar:', error);
+      alert('No se pudieron obtener los datos actuales del usuario.');
+    }
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btnSubmitEditUser');
+    const originalText = btnSubmit.textContent;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Actualizando...';
+
+    const userId = document.getElementById('editUsrId').value;
+    const updateData = {
+      nombre: document.getElementById('editUsrNombre').value.trim(),
+      segundoNombre: document.getElementById('editUsrSegundoNombre').value.trim() || null,
+      primerApellido: document.getElementById('editUsrPrimerApellido').value.trim(),
+      segundoApellido: document.getElementById('editUsrSegundoApellido').value.trim(),
+      fechaNacimiento: document.getElementById('editUsrFechaNac').value,
+      numeroIdentificacion: document.getElementById('editUsrNumId').value.trim(),
+      id_tipo_identificacion: parseInt(document.getElementById('editUsrTipoId').value) || 1,
+      id_rol: parseInt(document.getElementById('editUsrRol').value) || 2,
+      email: document.getElementById('editUsrEmail').value.trim(),
+      password: document.getElementById('editUsrPassword').value
+    };
+
+    try {
+      await updateUser(userId, updateData);
+      alert('¡Usuario actualizado con éxito!');
+      closeModal();
+      fetchAndRenderUsers();
+    } catch (error) {
+      alert(`Error al actualizar: ${error.message}`);
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = originalText;
+    }
+  });
+}
 
 /**
  * Carga los select de Tipos de Identificación y Roles para Edición
@@ -363,15 +451,6 @@ async function loadEditModalDropdowns() {
   }
 }
 
-/**
- * Configura los eventos del Modal de Detalles
- */
-/**
- * Configura los eventos del Modal de Detalles
- */
-/**
- * Configura los eventos del Modal de Detalles
- */
 /**
  * Configura los eventos del Modal de Detalles
  */
@@ -465,13 +544,9 @@ function setupDetailsModalEvents() {
         try {
           profileContainer.style.opacity = '0.5';
           
-          // LLAMADO AL SERVICIO MODULARIZADO ENVIANDO EL ARCHIVO DIRECTAMENTE
           const result = await updateProfilePhoto(userId, file);
-
-          // Generar URL temporal local para renderizar la imagen al instante
           const localImageUrl = URL.createObjectURL(file);
 
-          // Actualizar visualmente la foto en el modal
           if (profileContainer.tagName === 'IMG') {
             profileContainer.src = localImageUrl;
           } else {
@@ -487,7 +562,6 @@ function setupDetailsModalEvents() {
           }
 
           alert(result.message || 'Foto de perfil actualizada correctamente');
-          
           if (typeof fetchAndRenderUsers === 'function') fetchAndRenderUsers();
 
         } catch (err) {
@@ -503,6 +577,7 @@ function setupDetailsModalEvents() {
     }
   });
 }
+
 /**
  * Configura la apertura, cierre y envío del formulario del modal de creación de usuarios
  */
@@ -584,6 +659,7 @@ function setupModalEvents() {
     }
   });
 }
+
 /**
  * Carga los combos de select para Tipos de Identificación y Roles (Creación)
  */

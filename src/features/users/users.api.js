@@ -5,6 +5,11 @@ import { API_CONFIG } from '../../core/config/api.config.js';
  * @param {Object} filters - Objeto con filtros (nombre, primer_apellido, email, num_identificacion, id_rol, isDelete)
  */
 export async function getAllUsers(filters = {}) {
+const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const params = new URLSearchParams();
 
@@ -22,7 +27,9 @@ export async function getAllUsers(filters = {}) {
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ADMIN || '/usuarios'}${queryString}`;
 
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     if (!response.ok) throw new Error('Error al obtener la lista de usuarios');
     const data = await response.json();
     return Array.isArray(data) ? data : (data.data || data.content || []);
@@ -33,8 +40,14 @@ export async function getAllUsers(filters = {}) {
 }
 
 export async function getUserById(id) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
   try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ADMIN || '/usuarios'}/${id}`);
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ADMIN || '/usuarios'}/${id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     if (!response.ok) throw new Error(`Error al obtener el usuario con ID ${id}`);
     return await response.json();
   } catch (error) {
@@ -47,11 +60,17 @@ export async function getUserById(id) {
  * Registra un usuario enviando FormData con las partes "body" e "imgPerfil".
  */
 export async function createUser(formData) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER || '/api/v1/register'}`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
       body: formData
     });
 
@@ -73,13 +92,18 @@ export async function createUser(formData) {
  * Actualiza los datos básicos de un usuario por ID (PUT)
  */
 export async function updateUser(id_user, userData) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const isFormData = userData instanceof FormData;
     const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USUARIOS}/${id_user}`;
 
     const response = await fetch(endpoint, {
       method: 'PUT',
-      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      headers: isFormData ? {} : { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: isFormData ? userData : JSON.stringify(userData)
     });
 
@@ -96,9 +120,15 @@ export async function updateUser(id_user, userData) {
 }
 
 export async function deleteUser(id) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ADMIN || '/usuarios'}/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
     });
 
     if (!response.ok) {
@@ -114,11 +144,17 @@ export async function deleteUser(id) {
 }
 
 export async function getUserDetails(id) {
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  if (!token) {
+    throw new Error('No se encontró el token de autenticación.');
+  }
+
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/users/admin/${id}/details`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
     });
 
