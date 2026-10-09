@@ -1,31 +1,22 @@
 import { API_CONFIG } from '../../core/config/api.config.js';
 import { updateProfilePhoto } from '../perfil/perfilApi.js';
+import { navigateToView } from './admin.navigation.js';
 
-// Variable global para almacenar IDs relacionales
 const userRelationalData = {
   id_tipo_identificacion: null,
   id_rol: null
 };
 
-/**
- * Obtiene el token de autenticación formateado.
- */
 function getAuthToken() {
   return localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
 }
 
-/**
- * Función auxiliar para traer y pintar los datos del usuario en la vista
- */
 async function cargarDatosUsuario() {
   try {
     const token = getAuthToken();
     const userId = localStorage.getItem('userId');
 
-    if (!token || !userId) {
-      console.warn('No se encontró token o ID de usuario.');
-      return;
-    }
+    if (!token || !userId) return;
 
     const endpoint = `${API_CONFIG.BASE_URL}/api/v1/perfil/${userId}/datos-basicos`;
     const response = await fetch(endpoint, {
@@ -36,16 +27,14 @@ async function cargarDatosUsuario() {
       }
     });
 
-    if (!response.ok) throw new Error('Error al obtener los datos básicos del perfil');
+    if (!response.ok) throw new Error('Error al obtener los datos básicos');
 
     const data = await response.json();
     const user = data.data || data; 
 
-    // Guardar IDs necesarios para la actualización
     userRelationalData.id_tipo_identificacion = user.id_tipo_identificacion || user.idTipoIdentificacion || 1;
     userRelationalData.id_rol = user.idRol || user.id_rol || 1;
 
-    // Elementos del formulario de perfil
     const nombreInput = document.getElementById('profile-nombre');
     const segundoNombreInput = document.getElementById('profile-segundo-nombre');
     const apellidoInput = document.getElementById('profile-apellido');
@@ -56,17 +45,14 @@ async function cargarDatosUsuario() {
     const rolInput = document.getElementById('profile-rol-input');
     const emailInput = document.getElementById('profile-email');
     
-    // Tarjeta de perfil y Sidebar
     const nameCard = document.getElementById('profile-name-card');
     const roleCard = document.getElementById('profile-role-card');
     const avatarImg = document.getElementById('profile-avatar');
-    const sideBarRol = document.getElementById('user-role')
-    const sidebarAvatar = document.querySelector('.user-profile-card img, .user-avatar, img[alt*="Avatar"], .sidebar img');
-    const sidebarName = document.querySelector('.user-profile-card .user-name, .user-info h4, .user-name');
+    const sideBarRol = document.getElementById('user-role');
+    const sidebarAvatar = document.querySelector('.user-profile-card img, .user-avatar');
+    const sidebarName = document.querySelector('.user-profile-card .user-name');
     const welcomeTitle = document.getElementById('welcome-user-title');
-  
 
-    // Asignación de valores en inputs
     if (nombreInput) { nombreInput.value = user.nombre || ''; nombreInput.disabled = false; }
     if (segundoNombreInput) { segundoNombreInput.value = user.segundoNombre || ''; segundoNombreInput.disabled = false; }
     if (apellidoInput) { apellidoInput.value = user.primerApellido || ''; apellidoInput.disabled = false; }
@@ -81,31 +67,24 @@ async function cargarDatosUsuario() {
     
     if (nameCard) nameCard.textContent = fullName || 'Usuario';
     if (sidebarName && fullName) sidebarName.textContent = fullName;
-    if (welcomeTitle) welcomeTitle.textContent = `Bienvenido, ${user.nombre || 'Admin'} 👋`;
+    if (welcomeTitle) welcomeTitle.textContent = `Hola, ${user.nombre || 'Admin'}`;
 
-    if (user.rol && roleCard) {
-      roleCard.textContent = user.rol;
-    }
+    if (user.rol && roleCard) roleCard.textContent = user.rol;
+    if (sideBarRol && user.rol) sideBarRol.textContent = user.rol;
 
-    // Actualización de avatar si existe URL
     const fotoUrl = user.urlFotoPerfil || user.fotoPerfilUrl;
-    sideBarRol.textContent=user.rol
-
     if (fotoUrl) {
       if (avatarImg) avatarImg.src = fotoUrl;
       if (sidebarAvatar) sidebarAvatar.src = fotoUrl;
     }
 
   } catch (error) {
-    console.error('Error al cargar la información del usuario:', error);
+    console.error('Error al cargar datos:', error);
     const welcomeTitle = document.getElementById('welcome-user-title');
-    if (welcomeTitle) welcomeTitle.textContent = 'Bienvenido 👋';
+    if (welcomeTitle) welcomeTitle.textContent = 'BiblioNepo Admin';
   }
 }
 
-/**
- * Maneja la subida e integración dinámica de la foto de perfil
- */
 async function manejarCambioFotoPerfil(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -113,7 +92,7 @@ async function manejarCambioFotoPerfil(event) {
   const token = getAuthToken();
   const userId = localStorage.getItem('userId');
   const avatarImg = document.getElementById('profile-avatar');
-  const sidebarAvatar = document.querySelector('.user-profile-card img, .user-avatar, img[alt*="Avatar"], .sidebar img');
+  const sidebarAvatar = document.querySelector('.user-profile-card img, .user-avatar');
 
   try {
     if (avatarImg) avatarImg.style.opacity = '0.4';
@@ -124,19 +103,16 @@ async function manejarCambioFotoPerfil(event) {
     if (avatarImg) avatarImg.src = nuevaFotoUrl;
     if (sidebarAvatar) sidebarAvatar.src = nuevaFotoUrl;
 
-    alert('¡Foto de perfil actualizada con éxito!');
+    alert('Foto de perfil actualizada.');
   } catch (error) {
-    console.error('Error al actualizar la foto de perfil:', error);
-    alert('Ocurrió un error al subir la foto de perfil.');
+    console.error('Error:', error);
+    alert('No se pudo subir la imagen.');
   } finally {
     if (avatarImg) avatarImg.style.opacity = '1';
-    event.target.value = ''; // Limpiar selector
+    event.target.value = '';
   }
 }
 
-/**
- * Función encargada de actualizar los datos de texto del usuario en la API
- */
 async function guardarDatosUsuario(event) {
   if (event) event.preventDefault();
 
@@ -144,10 +120,7 @@ async function guardarDatosUsuario(event) {
   const token = getAuthToken();
   const userId = localStorage.getItem('userId');
 
-  if (!token || !userId) {
-    alert('No se identificó la sesión del usuario.');
-    return;
-  }
+  if (!token || !userId) return;
 
   const payload = {
     nombre: document.getElementById('profile-nombre')?.value.trim() || '',
@@ -162,9 +135,7 @@ async function guardarDatosUsuario(event) {
   };
 
   const passwordVal = document.getElementById('profile-password')?.value.trim();
-  if (passwordVal) {
-    payload.password = passwordVal;
-  }
+  if (passwordVal) payload.password = passwordVal;
 
   try {
     if (btnGuardar) {
@@ -182,21 +153,16 @@ async function guardarDatosUsuario(event) {
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Error al actualizar los datos del usuario');
-    }
+    if (!response.ok) throw new Error('Error al actualizar datos');
 
-    alert('¡Datos de usuario actualizados correctamente!');
-    
+    alert('Datos guardados.');
     const passInput = document.getElementById('profile-password');
     if (passInput) passInput.value = '';
 
     await cargarDatosUsuario();
 
   } catch (error) {
-    console.error('Error al actualizar el perfil:', error);
-    alert(`No se pudo actualizar la información: ${error.message}`);
+    alert(`Error: ${error.message}`);
   } finally {
     if (btnGuardar) {
       btnGuardar.disabled = false;
@@ -205,227 +171,394 @@ async function guardarDatosUsuario(event) {
   }
 }
 
+function initHeaderCarousel() {
+  const track = document.getElementById('carouselTrack');
+  const slides = document.querySelectorAll('.carousel-slide');
+  const dots = document.querySelectorAll('.carousel-dot');
+  const prevBtn = document.getElementById('prevCarouselBtn');
+  const nextBtn = document.getElementById('nextCarouselBtn');
+  const container = document.getElementById('heroCarouselContainer');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+
+  function updateCarousel(index) {
+    if (index < 0) currentIndex = slides.length - 1;
+    else if (index >= slides.length) currentIndex = 0;
+    else currentIndex = index;
+
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === currentIndex);
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      updateCarousel(currentIndex + 1);
+    }, 4000);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { updateCarousel(currentIndex - 1); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { updateCarousel(currentIndex + 1); startAutoplay(); });
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => { updateCarousel(idx); startAutoplay(); });
+  });
+
+  if (container) {
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+  }
+
+  startAutoplay();
+}
+
+function initPinterestCardSlideshows() {
+  const heroCards = document.querySelectorAll('.pinterest-hero-card');
+
+  heroCards.forEach((card, cardIndex) => {
+    const slides = card.querySelectorAll('.card-bg-slide');
+    const dots = card.querySelectorAll('.mini-dot');
+    if (slides.length <= 1) return;
+
+    let activeIdx = 0;
+    const intervalTime = 3500 + (cardIndex * 300);
+
+    setInterval(() => {
+      slides[activeIdx].classList.remove('active');
+      if (dots[activeIdx]) dots[activeIdx].classList.remove('active');
+
+      activeIdx = (activeIdx + 1) % slides.length;
+
+      slides[activeIdx].classList.add('active');
+      if (dots[activeIdx]) dots[activeIdx].classList.add('active');
+    }, intervalTime);
+  });
+}
+
 export function loadDashboardView() {
   const container = document.getElementById('admin-content-container');
   if (!container) return;
 
   container.innerHTML = `
-    <!-- Vista del Dashboard -->
     <div id="view-dashboard" class="admin-view" style="display: block;">
-      <div class="view-header" style="margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end;">
-        <div>
-          <span style="font-size: 0.8rem; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 4px;">Panel General</span>
-          <h1 id="welcome-user-title" style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">Cargando...</h1>
+      
+      <!-- CARRUSEL SUPERIOR -->
+      <div class="carousel-hero-container" id="heroCarouselContainer">
+        <div class="carousel-track" id="carouselTrack">
+          
+          <div class="carousel-slide" style="background-image: url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1200&q=80');">
+            <div class="carousel-slide-overlay"></div>
+            <div class="carousel-slide-content">
+              <span class="carousel-slide-tag">BiblioNepo</span>
+              <h2 class="carousel-slide-title">Catálogo de Libros</h2>
+              <p class="carousel-slide-desc">Revisa la lista de libros, gestiona préstamos y consulta la disponibilidad.</p>
+              <button class="carousel-slide-btn" data-nav="catalog">
+                Ir al Catálogo <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="carousel-slide" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80');">
+            <div class="carousel-slide-overlay"></div>
+            <div class="carousel-slide-content">
+              <span class="carousel-slide-tag">Usuarios</span>
+              <h2 class="carousel-slide-title">Gestión de Cuentas</h2>
+              <p class="carousel-slide-desc">Administra los accesos de estudiantes, profesores y administradores.</p>
+              <button class="carousel-slide-btn" data-nav="users">
+                Ver usuarios <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+
         </div>
-        <div style="font-size: 0.85rem; color: #64748b; background: #ffffff; padding: 8px 16px; border-radius: 9999px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 8px;">
-          <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 3px rgba(34,197,94,0.15);"></span>
-          <span>Sistema en Línea &bull; Render API</span>
+
+        <div class="carousel-controls">
+          <div class="carousel-dots">
+            <span class="carousel-dot active"></span>
+            <span class="carousel-dot"></span>
+          </div>
+          <button class="carousel-arrow" id="prevCarouselBtn" title="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="carousel-arrow" id="nextCarouselBtn" title="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
 
-      <!-- Tarjetas de Métricas -->
-      <section class="analytics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 28px;">
-        <article class="analytic-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; position: relative; overflow: hidden;">
-          <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #6366f1;"></div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <span style="color: #64748b; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Total Usuarios</span>
-              <div style="font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-top: 6px; letter-spacing: -0.03em;">1,150</div>
-            </div>
-            <div style="background: #eef2ff; color: #6366f1; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-              <i class="fa-solid fa-users"></i>
-            </div>
+      <!-- ENCABEZADO -->
+      <div style="margin-bottom: 16px;">
+        <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Módulos principales</h2>
+        <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Haz clic en una sección para acceder</p>
+      </div>
+
+      <!-- CARDS HERO ESTILO PINTEREST -->
+      <div class="pinterest-masonry-grid">
+        
+        <!-- CARD 1: CATÁLOGO -->
+        <article class="pinterest-hero-card tall" data-nav="catalog">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=800&q=80');"></div>
           </div>
-          <div style="font-size: 0.8rem; color: #16a34a; margin-top: 14px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
-            <span style="background: #dcfce7; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 2px;"><i class="fa-solid fa-arrow-up" style="font-size: 0.7rem;"></i> +12</span> 
-            <span style="color: #64748b; font-weight: 450;">nuevos este mes</span>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-book"></i> Libros</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Catálogo</h3>
+              <p class="pinterest-card-desc">Lista general de libros y estado de préstamos.</p>
+              <span class="pinterest-card-cta">Ir al catálogo <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
           </div>
         </article>
 
-        <article class="analytic-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; position: relative; overflow: hidden;">
-          <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #0ea5e9;"></div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <span style="color: #64748b; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Préstamos Activos</span>
-              <div style="font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-top: 6px; letter-spacing: -0.03em;">142</div>
-            </div>
-            <div style="background: #e0f2fe; color: #0ea5e9; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-              <i class="fa-solid fa-book-open"></i>
-            </div>
+        <!-- CARD 2: USUARIOS -->
+        <article class="pinterest-hero-card medium" data-nav="users">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1531545514256-b1400bc00f31?auto=format&fit=crop&w=800&q=80');"></div>
           </div>
-          <div style="font-size: 0.8rem; color: #64748b; margin-top: 14px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
-            <span style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px;">En circulación</span> 
-            <span>actual del sistema</span>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-users"></i> Usuarios</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Usuarios</h3>
+              <p class="pinterest-card-desc">Registro de usuarios y cuentas del sistema.</p>
+              <span class="pinterest-card-cta">Ver usuarios <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
           </div>
         </article>
 
-        <article class="analytic-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; position: relative; overflow: hidden;">
-          <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #f59e0b;"></div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <span style="color: #64748b; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Catálogo Total</span>
-              <div style="font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-top: 6px; letter-spacing: -0.03em;">3,480</div>
-            </div>
-            <div style="background: #fef3c7; color: #d97706; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-              <i class="fa-solid fa-book"></i>
-            </div>
+        <!-- CARD 3: AUTORES -->
+        <article class="pinterest-hero-card medium-tall" data-nav="authors">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=800&q=80');"></div>
           </div>
-          <div style="font-size: 0.8rem; color: #64748b; margin-top: 14px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
-            <span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px;">Títulos</span> 
-            <span>registrados y listos</span>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-feather"></i> Autores</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Autores</h3>
+              <p class="pinterest-card-desc">Información y libros organizados por autor.</p>
+              <span class="pinterest-card-cta">Ver autores <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
           </div>
         </article>
-      </section>
 
-      <!-- Secciones Principales -->
-      <section class="dashboard-sections-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-        <div class="dashboard-card" style="background: #ffffff; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <div>
-              <h3 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin: 0;">Préstamos Recientes</h3>
-              <p style="font-size: 0.8rem; color: #64748b; margin: 2px 0 0 0;">Últimos movimientos de libros registrados</p>
+        <!-- CARD 4: CATEGORÍAS -->
+        <article class="pinterest-hero-card compact" data-nav="categories">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80');"></div>
+          </div>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-folder-tree"></i> Categorías</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+              </div>
             </div>
-            <a href="#prestamos" style="font-size: 0.85rem; color: #6366f1; text-decoration: none; font-weight: 600; background: #eef2ff; padding: 6px 12px; border-radius: 8px;">Ver todos</a>
-          </div>
-          <div class="table-responsive">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
-              <thead>
-                <tr style="border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">
-                  <th style="padding: 12px 10px; font-weight: 700;">Usuario</th>
-                  <th style="padding: 12px 10px; font-weight: 700;">Libro</th>
-                  <th style="padding: 12px 10px; font-weight: 700;">Fecha Límite</th>
-                  <th style="padding: 12px 10px; font-weight: 700;">Estado</th>
-                </tr>
-              </thead>
-              <tbody style="color: #334155;">
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                  <td style="padding: 14px 10px; font-weight: 600; color: #0f172a;">Ana Pérez</td>
-                  <td style="padding: 14px 10px; color: #475569;">Cien Años de Soledad</td>
-                  <td style="padding: 14px 10px; color: #64748b; font-size: 0.8rem;">15/09/2026</td>
-                  <td style="padding: 14px 10px;"><span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700;">Activo</span></td>
-                </tr>
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                  <td style="padding: 14px 10px; font-weight: 600; color: #0f172a;">Carlos Gómez</td>
-                  <td style="padding: 14px 10px; color: #475569;">El Laberinto de la Soledad</td>
-                  <td style="padding: 14px 10px; color: #64748b; font-size: 0.8rem;">20/09/2026</td>
-                  <td style="padding: 14px 10px;"><span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700;">Activo</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="dashboard-card" style="background: #ffffff; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between;">
-          <div>
-            <h3 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-bottom: 6px;">Acciones Rápidas</h3>
-            <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 20px 0;">Operaciones frecuentes del sistema</p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button style="width: 100%; padding: 12px 16px; background: #6366f1; color: white; border: none; border-radius: 10px; cursor: pointer; text-align: left; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 12px;">
-                <i class="fa-solid fa-plus-circle"></i> Registrar Nuevo Préstamo
-              </button>
-              <button style="width: 100%; padding: 12px 16px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px; cursor: pointer; text-align: left; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 12px;">
-                <i class="fa-solid fa-book-medical" style="color: #6366f1;"></i> Añadir Libro
-              </button>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Categorías</h3>
+              <p class="pinterest-card-desc">Secciones y temas de la biblioteca.</p>
+              <span class="pinterest-card-cta">Ver categorías <i class="fa-solid fa-arrow-right"></i></span>
             </div>
           </div>
-        </div>
-      </section>
+        </article>
+
+        <!-- CARD 5: GÉNEROS -->
+        <article class="pinterest-hero-card medium-tall" data-nav="genres">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1463320726281-696a485928c7?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80');"></div>
+          </div>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-tags"></i> Géneros</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Géneros y formatos</h3>
+              <p class="pinterest-card-desc">Tipos de libro y formatos disponibles.</p>
+              <span class="pinterest-card-cta">Ver géneros <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+          </div>
+        </article>
+
+        <!-- CARD 6: ROLES -->
+        <article class="pinterest-hero-card medium" data-nav="roles">
+          <div class="card-slideshow-wrapper">
+            <div class="card-bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80');"></div>
+            <div class="card-bg-slide" style="background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80');"></div>
+          </div>
+          <div class="pinterest-card-overlay">
+            <div class="pinterest-card-top">
+              <span class="badge-tag"><i class="fa-solid fa-user-shield"></i> Permisos</span>
+              <div class="mini-slide-dots">
+                <span class="mini-dot active"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="pinterest-card-bottom">
+              <h3 class="pinterest-card-title">Roles</h3>
+              <p class="pinterest-card-desc">Configuración de permisos y roles de acceso.</p>
+              <span class="pinterest-card-cta">Ver roles <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
     </div>
 
-    <!-- Vista de Perfil -->
+    <!-- VISTA DE PERFIL (DISPOSICIÓN VERTICAL DESTAQUADA) -->
     <div id="view-profile" class="admin-view" style="display: none;">
-      <div class="view-header" style="margin-bottom: 28px;">
-        <span style="font-size: 0.8rem; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 4px;">Configuración de Cuenta</span>
-        <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">Mi Perfil</h1>
-      </div>
+      <div class="profile-container">
+        
+        <header class="profile-header">
+          <span class="profile-badge-tag">CONFIGURACIÓN</span>
+          <h2 class="profile-title">Mi Perfil</h2>
+        </header>
 
-      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
-        <div style="background: #ffffff; padding: 32px 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; text-align: center;">
-          
-          <!-- Contenedor del Avatar con botón para editar la foto -->
-          <div style="position: relative; width: 96px; height: 96px; margin: 0 auto 16px auto;">
-            <img id="profile-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cbd5e1'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #eef2ff; background: #f1f5f9; transition: opacity 0.2s;">
-            <label for="input-foto-perfil" style="position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; background: #6366f1; color: white; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="Cambiar foto de perfil">
-              <i class="fa-solid fa-camera" style="font-size: 0.8rem;"></i>
-            </label>
-            <input type="file" id="input-foto-perfil" accept="image/*" style="display: none;">
+        <div class="profile-vertical-layout">
+          <!-- Tarjeta Superior: Foto de Perfil, Nombre y Rol -->
+          <div class="profile-card avatar-card-top">
+            <div class="avatar-wrapper">
+              <img id="profile-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cbd5e1'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" alt="Avatar" class="avatar-preview">
+              <label for="input-foto-perfil" class="avatar-edit-btn" title="Cambiar foto de perfil">
+                <i class="fa-solid fa-camera"></i>
+              </label>
+              <input type="file" id="input-foto-perfil" accept="image/*" hidden>
+            </div>
+            <div class="avatar-info-text">
+              <h3 id="profile-name-card" class="user-display-name">&nbsp;</h3>
+              <span id="profile-role-card" class="user-role-badge">&nbsp;</span>
+            </div>
           </div>
 
-          <h3 id="profile-name-card" style="font-size: 1.125rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">&nbsp;</h3>
-          <p id="profile-role-card" style="font-size: 0.85rem; color: #6366f1; font-weight: 600; margin: 0 0 16px 0;">&nbsp;</p>
-          <span style="display: inline-block; background: #f1f5f9; color: #475569; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">BiblioNepo Core</span>
-        </div>
+          <!-- Tarjeta Inferior: Formulario de Información Personal -->
+          <div class="profile-card form-card">
+            <div class="card-header">
+              <h3>Información personal</h3>
+              <p>Actualiza tus datos de contacto y credenciales de acceso al sistema.</p>
+            </div>
 
-        <div style="display: flex; flex-direction: column; gap: 24px;">
-          <div style="background: #ffffff; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.04); border: 1px solid #e2e8f0;">
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Información Personal</h3>
-            <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 20px 0;">Actualiza tus datos de contacto y perfil</p>
-            
-            <form id="profile-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Primer Nombre</label>
-                <input type="text" id="profile-nombre" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+            <form id="profile-form" class="profile-form-grid">
+              <div class="form-group">
+                <label>Primer Nombre</label>
+                <input type="text" id="profile-nombre" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Segundo Nombre</label>
-                <input type="text" id="profile-segundo-nombre" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Segundo Nombre</label>
+                <input type="text" id="profile-segundo-nombre" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Primer Apellido</label>
-                <input type="text" id="profile-apellido" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Primer Apellido</label>
+                <input type="text" id="profile-apellido" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Segundo Apellido</label>
-                <input type="text" id="profile-segundo-apellido" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Segundo Apellido</label>
+                <input type="text" id="profile-segundo-apellido" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Tipo de Identificación</label>
-                <input type="text" id="profile-tipo-id" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Tipo de Identificación</label>
+                <input type="text" id="profile-tipo-id" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Número de Identificación</label>
-                <input type="text" id="profile-num-id" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Número de Identificación</label>
+                <input type="text" id="profile-num-id" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Fecha de Nacimiento</label>
-                <input type="date" id="profile-nacimiento" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" id="profile-nacimiento" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Rol en el Sistema</label>
-                <input type="text" id="profile-rol-input" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #64748b; background: #f8fafc; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Rol en el Sistema</label>
+                <input type="text" id="profile-rol-input" class="form-control readonly-input" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Correo Electrónico</label>
-                <input type="email" id="profile-email" placeholder="Cargando..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;" disabled>
+
+              <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="profile-email" class="form-control" disabled>
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Nueva Contraseña (Opcional)</label>
-                <input type="password" id="profile-password" placeholder="••••••••" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; color: #0f172a; background: #ffffff; outline: none;">
+
+              <div class="form-group">
+                <label>Nueva Contraseña (Opcional)</label>
+                <input type="password" id="profile-password" class="form-control" placeholder="••••••••">
               </div>
-              
-              <div style="grid-column: span 2; display: flex; justify-content: flex-end; margin-top: 8px;">
-                <button type="submit" id="btn-guardar-perfil" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer;">Guardar Cambios</button>
+
+              <div class="form-actions">
+                <button type="submit" id="btn-guardar-perfil" class="btn-save-profile">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  Guardar Cambios
+                </button>
               </div>
             </form>
           </div>
+
         </div>
       </div>
     </div>
   `;
 
-  // Listener para el formulario de actualización de datos de texto
+  const elementsWithNav = container.querySelectorAll('[data-nav]');
+  elementsWithNav.forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetView = el.getAttribute('data-nav');
+      if (targetView) {
+        navigateToView(targetView);
+      }
+    });
+  });
+
   const profileForm = document.getElementById('profile-form');
-  if (profileForm) {
-    profileForm.addEventListener('submit', guardarDatosUsuario);
-  }
+  if (profileForm) profileForm.addEventListener('submit', guardarDatosUsuario);
 
-  // Listener para la carga de la nueva imagen de perfil
   const inputFotoPerfil = document.getElementById('input-foto-perfil');
-  if (inputFotoPerfil) {
-    inputFotoPerfil.addEventListener('change', manejarCambioFotoPerfil);
-  }
+  if (inputFotoPerfil) inputFotoPerfil.addEventListener('change', manejarCambioFotoPerfil);
 
-  // Cargar datos del usuario al renderizar la vista inicial
+  initHeaderCarousel();
+  initPinterestCardSlideshows();
+
   cargarDatosUsuario();
 }
 

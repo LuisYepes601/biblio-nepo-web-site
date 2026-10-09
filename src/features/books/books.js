@@ -1,13 +1,13 @@
 import { fetchBooks, createBook, fetchBookDetails, fetchFormatosLibro } from './books.api.js';
-import { fetchIdiomas, fetchCategorias, fetchGeneros, fetchTiposLibro , fetchCategoriasPorLibro} from '../catalog/catalog.api.js';
+import { fetchIdiomas, fetchCategorias, fetchGeneros, fetchTiposLibro, fetchCategoriasPorLibro } from '../catalog/catalog.api.js';
 import { fetchAuthors } from '../autors/authors.api.js';
+import { navigateToView } from '../admin/admin.navigation.js';
 
 let currentPage = 0;
 let currentSearchNombre = '';
 let currentSearchAutor = '';
 let currentSearchIdioma = '';
 let currentLimit = getDefaultLimit();
-// Variable para guardar la lista de libros y extraer el título/autor después
 let currentBooksList = [];
 
 function getDefaultLimit() {
@@ -18,7 +18,7 @@ function getDefaultLimit() {
 }
 
 export async function loadBooksView() {
-  const container = document.getElementById('admin-content-container');
+  const container = document.getElementById('admin-content-container') || document.getElementById('main-content');
   if (!container) return;
 
   currentPage = 0;
@@ -27,68 +27,187 @@ export async function loadBooksView() {
   currentSearchIdioma = '';
   currentLimit = getDefaultLimit();
 
-  container.innerHTML = `
-    <div class="view-header">
-      <h1>Catálogo de Libros</h1>
-      <p>Administra los ejemplares, inventario y registros bibliotecarios.</p>
-    </div>
+  const isLimit8 = currentLimit === 8 ? 'selected' : '';
+  const isLimit12 = currentLimit === 12 ? 'selected' : '';
+  const isLimit20 = currentLimit === 20 ? 'selected' : '';
 
-    <section class="authors-module-container">
-      <div class="authors-header">
-        <div>
-          <h3>Inventario de Libros</h3>
-          <p>Control de títulos, autores asociados, stock y estado.</p>
-        </div>
-        <button class="btn-primary" id="btnNewBook">
-          <i class="fa-solid fa-book-medical"></i> Nuevo Libro
+  container.innerHTML = `
+    <div class="books-page-wrapper">
+      
+      <!-- BARRA SUPERIOR CON BOTÓN REGRESAR -->
+      <div class="books-top-bar" style="margin-bottom: 16px;">
+        <button class="btn-back-dashboard" id="btnBackToDashboard" style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e2e8f0; color: #334155; padding: 8px 14px; border-radius: 8px; font-size: 0.825rem; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s;">
+          <i class="fa-solid fa-arrow-left"></i> Regresar al Dashboard
         </button>
       </div>
 
-      <!-- Barra de Filtros y Búsqueda -->
-      <div class="authors-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="searchBookTitle" placeholder="Buscar por título..." 
-               style="flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); outline: none; font-size: 0.875rem;">
-        
-        <input type="text" id="searchBookAuthor" placeholder="Buscar por autor..." 
-               style="flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); outline: none; font-size: 0.875rem;">
+      <!-- CARRUSEL HERO AUTOMÁTICO DE LIBROS -->
+      <div class="carousel-hero-container" id="booksHeroCarousel" style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 28px; border: 1px solid #e2e8f0; background: #0f172a;">
+        <div class="carousel-track" id="booksCarouselTrack" style="display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 100%;">
+          
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Catálogo & Acervo</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Gestión de Libros</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Administra los ejemplares, inventario y registros bibliotecarios de la plataforma.</p>
+            </div>
+          </div>
 
-        <!-- Selector de Idioma Dinámico -->
-        <select id="searchBookIdioma" style="min-width: 160px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); outline: none; font-size: 0.875rem; background: white; cursor: pointer;">
-          <option value="">Todos los idiomas</option>
-        </select>
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Biblioteca Digital</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Colección Literaria</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Organiza las publicaciones por formato, idioma, género y categorías de manera centralizada.</p>
+            </div>
+          </div>
 
-        <div style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
-          <label for="limitSelector" style="font-size: 0.85rem; color: #475569; font-weight: 500;">Mostrar:</label>
-          <select id="limitSelector" style="border: none; outline: none; background: transparent; font-size: 0.85rem; font-weight: 600; color: #1e293b; cursor: pointer;">
-            <option value="8" ${currentLimit === 8 ? 'selected' : ''}>8</option>
-            <option value="12" ${currentLimit === 12 ? 'selected' : ''}>12</option>
-            <option value="20" ${currentLimit === 20 ? 'selected' : ''}>20</option>
-          </select>
+        </div>
+
+        <div class="carousel-controls" style="position: absolute; bottom: 16px; right: 20px; z-index: 3; display: flex; align-items: center; gap: 8px;">
+          <div class="carousel-dots" style="display: flex; gap: 6px; margin-right: 6px;">
+            <span class="carousel-dot active" style="width: 20px; height: 7px; border-radius: 10px; background: #ffffff; cursor: pointer;"></span>
+            <span class="carousel-dot" style="width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); cursor: pointer;"></span>
+          </div>
+          <button class="carousel-arrow" id="booksPrevBtn" title="Anterior" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="carousel-arrow" id="booksNextBtn" title="Siguiente" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
 
-      <div class="authors-grid" id="booksGrid">
-        <p style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Cargando libros...</p>
-      </div>
+      <!-- MÓDULO DE LIBROS -->
+      <section class="authors-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
+        <div class="authors-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Inventario de Libros</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.825rem; color: #64748b;">Control de títulos, autores asociados, stock y estado.</p>
+          </div>
+          <button class="btn-primary" id="btnNewBook" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-book-medical"></i> Nuevo Libro
+          </button>
+        </div>
 
-      <div id="booksPagination"></div>
-    </section>
+        <!-- Barra de Filtros y Búsqueda -->
+        <div class="authors-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+          <input type="text" id="searchBookTitle" placeholder="Buscar por título..." 
+                 style="flex: 1; min-width: 180px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; background: white;">
+          
+          <input type="text" id="searchBookAuthor" placeholder="Buscar por autor..." 
+                 style="flex: 1; min-width: 180px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; background: white;">
+
+          <select id="searchBookIdioma" style="min-width: 160px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; background: white; cursor: pointer;">
+            <option value="">Todos los idiomas</option>
+          </select>
+
+          <div style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+            <label for="limitSelector" style="font-size: 0.825rem; color: #475569; font-weight: 500;">Mostrar:</label>
+            <select id="limitSelector" style="border: none; outline: none; background: transparent; font-size: 0.85rem; font-weight: 600; color: #1e293b; cursor: pointer;">
+              <option value="8" ${isLimit8}>8</option>
+              <option value="12" ${isLimit12}>12</option>
+              <option value="20" ${isLimit20}>20</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="authors-grid" id="booksGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+          <p style="grid-column: 1 / -1; text-align: center; color: #64748b;">Cargando libros...</p>
+        </div>
+
+        <div id="booksPagination"></div>
+      </section>
+
+    </div>
 
     <!-- Modal General para Libros -->
-    <div id="bookModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;">
-      <div class="modal-content" style="background: white; padding: 28px; border-radius: 16px; width: 100%; max-width: 640px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h3 id="bookModalTitle" style="margin: 0; font-size: 1.25rem;">Nuevo Libro</h3>
-          <button id="closeBookModalBtn" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+    <div id="bookModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;">
+      <div class="modal-content" style="background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 640px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+          <h3 id="bookModalTitle" style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 700;">Nuevo Libro</h3>
+          <button id="closeBookModalBtn" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div id="bookModalBody"></div>
       </div>
     </div>
   `;
 
+  // Evento del botón de regreso
+  const btnBack = document.getElementById('btnBackToDashboard');
+  if (btnBack) {
+    btnBack.addEventListener('click', () => {
+      if (typeof navigateToView === 'function') {
+        navigateToView('dashboard');
+      }
+    });
+  }
+
+  // Inicializar carrusel hero
+  initBooksCarousel();
+
   await populateLanguageFilter();
   initBookListeners();
   await loadAndRenderBooks(currentSearchNombre, currentSearchAutor, currentSearchIdioma, 0, currentLimit);
+}
+
+function initBooksCarousel() {
+  const track = document.getElementById('booksCarouselTrack');
+  const slides = track ? track.querySelectorAll('.carousel-slide') : [];
+  const dots = document.querySelectorAll('#booksHeroCarousel .carousel-dot');
+  const prevBtn = document.getElementById('booksPrevBtn');
+  const nextBtn = document.getElementById('booksNextBtn');
+  const container = document.getElementById('booksHeroCarousel');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+
+  function updateCarousel(index) {
+    if (index < 0) currentIndex = slides.length - 1;
+    else if (index >= slides.length) currentIndex = 0;
+    else currentIndex = index;
+
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    dots.forEach((dot, idx) => {
+      if (idx === currentIndex) {
+        dot.style.width = '20px';
+        dot.style.borderRadius = '10px';
+        dot.style.background = '#ffffff';
+      } else {
+        dot.style.width = '7px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = 'rgba(255, 255, 255, 0.4)';
+      }
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      updateCarousel(currentIndex + 1);
+    }, 3500);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { updateCarousel(currentIndex - 1); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { updateCarousel(currentIndex + 1); startAutoplay(); });
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => { updateCarousel(idx); startAutoplay(); });
+  });
+
+  if (container) {
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+  }
+
+  startAutoplay();
 }
 
 async function populateLanguageFilter() {
@@ -118,7 +237,7 @@ async function loadAndRenderBooks(nombre = '', nombre_autor = '', id_idioma = ''
   currentLimit = size;
 
   const response = await fetchBooks(page, size, nombre, nombre_autor, id_idioma);
-  currentBooksList = response.content || []; // Guardamos la lista en memoria
+  currentBooksList = response.content || [];
   renderBooks(currentBooksList);
   renderPagination(response);
 }
@@ -128,23 +247,33 @@ function renderBooks(books) {
   if (!grid) return;
 
   if (!books || books.length === 0) {
-    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">No se encontraron libros registrados.</p>`;
+    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">No se encontraron libros registrados.</p>`;
     return;
   }
 
-  grid.innerHTML = books.map(book => `
-    <div class="author-card book-card-item" data-id="${book.id}" style="cursor: pointer; transition: transform 0.2s ease;">
-      <div class="author-card-top">
-        <img src="${book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=100&h=100&fit=crop'}" alt="${book.titulo}" class="author-avatar" style="border-radius: 8px;">
+  const booksHtml = books.map(book => {
+    const portada = book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=100&h=100&fit=crop';
+    const autor = book.autor || 'Autor desconocido';
+    const isbn = book.isbn || 'N/A';
+    const editorial = book.editorial || 'Editorial N/D';
+    const formato = book.formatoLibro || 'Estándar';
+
+    return `
+      <div class="author-card book-card-item" data-id="${book.id}" style="cursor: pointer; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.15s ease;">
+        <div class="author-card-top" style="display: flex; justify-content: center;">
+          <img src="${portada}" alt="${book.titulo}" class="author-avatar" style="border-radius: 8px; width: 80px; height: 100px; object-fit: cover;">
+        </div>
+        <div class="author-info">
+          <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">${book.titulo}</h4>
+          <p style="margin: 2px 0; font-size: 0.785rem; color: #64748b;"><i class="fa-solid fa-feather" style="margin-right: 4px; color: #6366f1;"></i> ${autor}</p>
+          <p style="margin: 2px 0; font-size: 0.785rem; color: #64748b;"><i class="fa-solid fa-barcode" style="margin-right: 4px;"></i> ISBN: ${isbn}</p>
+          <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><i class="fa-solid fa-building" style="margin-right: 4px;"></i> ${editorial} • <span style="font-weight: 600; color: #4f46e5;">${formato}</span></p>
+        </div>
       </div>
-      <div class="author-info">
-        <h4>${book.titulo}</h4>
-        <p><i class="fa-solid fa-feather" style="margin-right: 4px; color: #6366f1;"></i> ${book.autor || 'Autor desconocido'}</p>
-        <p><i class="fa-solid fa-barcode" style="margin-right: 4px;"></i> ISBN: ${book.isbn || 'N/A'}</p>
-        <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><i class="fa-solid fa-building" style="margin-right: 4px;"></i> ${book.editorial || 'Editorial N/D'} • <span style="font-weight: 600; color: #4f46e5;">${book.formatoLibro || 'Estándar'}</span></p>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+
+  grid.innerHTML = booksHtml;
 
   grid.querySelectorAll('.book-card-item').forEach(card => {
     card.addEventListener('click', () => {
@@ -155,15 +284,15 @@ function renderBooks(books) {
 }
 
 async function openBookDetailsView(bookId) {
-  const container = document.getElementById('admin-content-container');
+  const container = document.getElementById('admin-content-container') || document.getElementById('main-content');
   if (!container) return;
 
   container.innerHTML = `
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-      <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+      <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #334155; font-weight: 600;">
         <i class="fa-solid fa-arrow-left"></i> Volver al Catálogo
       </button>
-      <h2 style="margin: 0; font-size: 1.5rem;">Detalles del Libro</h2>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Detalles del Libro</h2>
     </div>
     <div style="text-align: center; padding: 40px; color: #64748b;">Cargando información del libro...</div>
   `;
@@ -175,7 +304,7 @@ async function openBookDetailsView(bookId) {
   if (!details) {
     container.innerHTML = `
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-        <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+        <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem;">
           <i class="fa-solid fa-arrow-left"></i> Volver
         </button>
       </div>
@@ -185,85 +314,91 @@ async function openBookDetailsView(bookId) {
     return;
   }
 
-  // MAGIA: Buscar info básica en la memoria y fusionarla con los detalles de la API
   const basicInfo = currentBooksList.find(b => String(b.id) === String(bookId)) || {};
   const book = { ...basicInfo, ...details };
 
-  // Usamos 'book' (que ahora tiene título y autor) para mostrar los datos
   const authorId = book.id_autor || book.idAutor || book.autorId || null;
   const authorName = book.autor || book.nombreAutor || book.nombre_autor || '';
   const displayName = typeof authorName === 'object' ? (authorName.nombre || 'este autor') : (authorName || 'este autor');
 
+  const downloadBtnHtml = book.archivoUrl ? `
+    <a href="${book.archivoUrl}" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; width: 100%; padding: 10px; border-radius: 8px; text-decoration: none; background: #6366f1; color: white; font-size: 0.85rem; font-weight: 600;">
+      <i class="fa-solid fa-download"></i> Descargar Archivo
+    </a>
+  ` : '';
+
+  const portadaUrl = book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=450&fit=crop';
+  const formatoText = book.formatoLibro || 'Formato Estándar';
+  const tituloText = book.titulo || 'Sin Título';
+  const idiomaText = book.idioma || 'N/D';
+  const paisText = book.paisPublicacion || 'N/D';
+  const descripcionText = book.descripcion || 'No hay descripción disponible para este ejemplar.';
+
   container.innerHTML = `
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-      <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+      <button id="backToBooksBtn" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #334155; font-weight: 600;">
         <i class="fa-solid fa-arrow-left"></i> Volver al Catálogo
       </button>
-      <h2 style="margin: 0; font-size: 1.5rem;">Detalles del Libro</h2>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Detalles del Libro</h2>
     </div>
 
-    <div style="background: white; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; gap: 32px; flex-wrap: wrap; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 32px;">
+    <div style="background: white; padding: 32px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 28px;">
       <div style="flex: 0 0 240px; max-width: 100%; text-align: center;">
-        <img src="${book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=450&fit=crop'}" alt="Portada" style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        ${book.archivoUrl ? `
-          <a href="${book.archivoUrl}" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; width: 100%; padding: 10px; border-radius: 8px; text-decoration: none; background: #6366f1; color: white; font-size: 0.9rem;">
-            <i class="fa-solid fa-download"></i> Descargar Archivo
-          </a>
-        ` : ''}
+        <img src="${portadaUrl}" alt="Portada" style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 12px; border: 1px solid #e2e8f0;">
+        ${downloadBtnHtml}
       </div>
 
       <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px;">
         <div>
-          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6366f1; background: #e0e7ff; padding: 4px 10px; border-radius: 20px;">${book.formatoLibro || 'Formato Estándar'}</span>
-          <h3 style="margin: 10px 0 6px 0; font-size: 1.75rem; color: #1e293b;">${book.titulo || 'Sin Título'}</h3>
+          <span style="font-size: 0.725rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6366f1; background: #e0e7ff; padding: 4px 10px; border-radius: 6px;">${formatoText}</span>
+          <h3 style="margin: 10px 0 6px 0; font-size: 1.5rem; color: #0f172a; font-weight: 700;">${tituloText}</h3>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #f1f5f9;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
           <div>
-            <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 500;">Idioma</span>
-            <strong style="font-size: 0.95rem; color: #334155;"><i class="fa-solid fa-language" style="color: #6366f1; margin-right: 4px;"></i> ${book.idioma || 'N/D'}</strong>
+            <span style="display: block; font-size: 0.725rem; color: #64748b; font-weight: 600;">Idioma</span>
+            <strong style="font-size: 0.9rem; color: #0f172a;"><i class="fa-solid fa-language" style="color: #6366f1; margin-right: 4px;"></i> ${idiomaText}</strong>
           </div>
           <div>
-            <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 500;">País de Publicación</span>
-            <strong style="font-size: 0.95rem; color: #334155;"><i class="fa-solid fa-globe" style="color: #6366f1; margin-right: 4px;"></i> ${book.paisPublicacion || 'N/D'}</strong>
+            <span style="display: block; font-size: 0.725rem; color: #64748b; font-weight: 600;">País de Publicación</span>
+            <strong style="font-size: 0.9rem; color: #0f172a;"><i class="fa-solid fa-globe" style="color: #6366f1; margin-right: 4px;"></i> ${paisText}</strong>
           </div>
         </div>
 
         <!-- CONTENEDOR DINÁMICO DE CATEGORÍAS -->
-        <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #f1f5f9;">
-          <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 500; margin-bottom: 6px;">
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <span style="display: block; font-size: 0.725rem; color: #64748b; font-weight: 600; margin-bottom: 6px;">
             <i class="fa-solid fa-tags" style="color: #6366f1; margin-right: 4px;"></i> Categorías
           </span>
           <div id="bookCategoriesList" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-            <span style="color: #64748b; font-size: 0.85rem;">Cargando categorías...</span>
+            <span style="color: #64748b; font-size: 0.825rem;">Cargando categorías...</span>
           </div>
         </div>
 
         <div>
-          <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; color: #475569;">Descripción</h4>
-          <p style="margin: 0; font-size: 0.95rem; line-height: 1.6; color: #334155;">${book.descripcion || 'No hay descripción disponible para este ejemplar.'}</p>
+          <h4 style="margin: 0 0 6px 0; font-size: 0.9rem; color: #475569; font-weight: 600;">Descripción</h4>
+          <p style="margin: 0; font-size: 0.875rem; line-height: 1.6; color: #334155;">${descripcionText}</p>
         </div>
       </div>
     </div>
 
     <!-- Contenedor dinámico de libros relacionados -->
-    <div style="background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-      <h3 style="margin: 0 0 4px 0; font-size: 1.2rem; color: #1e293b;">Más obras de ${displayName}</h3>
-      <p style="margin: 0 0 16px 0; font-size: 0.85rem; color: #64748b;">Explora otros títulos relacionados escritos por este autor.</p>
-      <div id="relatedBooksList" style="text-align: center; padding: 20px; color: #64748b; font-size: 0.9rem;">Cargando obras del autor...</div>
+    <div style="background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+      <h3 style="margin: 0 0 4px 0; font-size: 1.1rem; color: #0f172a; font-weight: 700;">Más obras de ${displayName}</h3>
+      <p style="margin: 0 0 16px 0; font-size: 0.825rem; color: #64748b;">Explora otros títulos relacionados escritos por este autor.</p>
+      <div id="relatedBooksList" style="text-align: center; padding: 20px; color: #64748b; font-size: 0.85rem;">Cargando obras del autor...</div>
     </div>
   `;
 
   document.getElementById('backToBooksBtn').addEventListener('click', loadBooksView);
 
-  // Carga asíncrona de las categorías del libro desde el endpoint /api/v1/categoria-libros/{id_libro}
   if (bookId) {
     fetchCategoriasPorLibro(bookId).then(categorias => {
       const catContainer = document.getElementById('bookCategoriesList');
       if (!catContainer) return;
 
       if (!categorias || categorias.length === 0) {
-        catContainer.innerHTML = `<span style="color: #94a3b8; font-size: 0.85rem; font-style: italic;">Sin categorías asignadas</span>`;
+        catContainer.innerHTML = `<span style="color: #94a3b8; font-size: 0.825rem; font-style: italic;">Sin categorías asignadas</span>`;
         return;
       }
 
@@ -271,7 +406,7 @@ async function openBookDetailsView(bookId) {
         const nombre = typeof cat === 'object' 
           ? (cat.nombre || cat.nombreCategoria || cat.categoria?.nombre || cat.name) 
           : cat;
-        return `<span style="background: #e0e7ff; color: #4338ca; border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${nombre.toUpperCase()}</span>`;
+        return `<span style="background: #e0e7ff; color: #4338ca; border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">${nombre.toUpperCase()}</span>`;
       }).join('');
 
       catContainer.innerHTML = badges;
@@ -280,7 +415,6 @@ async function openBookDetailsView(bookId) {
     });
   }
 
-  // Llamamos a la función pasando explícitamente el authorId capturado
   await loadAndRenderRelatedBooks(authorId, typeof authorName === 'string' ? authorName : '', bookId);
 }
 
@@ -291,7 +425,6 @@ async function loadAndRenderRelatedBooks(authorId, authorNameQuery, currentBookI
   let authorBooks = [];
   try {
     const response = await fetchBooks(0, 10, '', '', '', authorId);
-
     const items = response.content || response;
     authorBooks = Array.isArray(items) ? items.filter(b => String(b.id) !== String(currentBookId)) : [];
   } catch (e) {
@@ -299,20 +432,29 @@ async function loadAndRenderRelatedBooks(authorId, authorNameQuery, currentBookI
   }
 
   if (authorBooks.length > 0) {
+    const cardsHtml = authorBooks.map(b => {
+      const portada = b.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=150&h=200&fit=crop';
+      const bAutorId = b.id_autor || authorId;
+      const bTitulo = b.titulo || '';
+      const bFormato = b.formatoLibro || 'Libro';
+
+      return `
+        <div class="author-card related-book-item" 
+             data-id="${b.id}" 
+             data-id-autor="${bAutorId}" 
+             style="flex: 0 0 160px; scroll-snap-align: start; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.15s;">
+          <img src="${portada}" alt="${bTitulo}" style="width: 100%; height: 130px; object-fit: cover; border-radius: 6px;">
+          <div style="overflow: hidden;">
+            <h5 style="margin: 0; font-size: 0.825rem; color: #0f172a; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${bTitulo}">${bTitulo}</h5>
+            <span style="font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px;">${bFormato}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
     listContainer.innerHTML = `
       <div class="horizontal-books-scroll" style="display: flex; gap: 16px; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x mandatory;">
-        ${authorBooks.map(b => `
-          <div class="author-card related-book-item" 
-               data-id="${b.id}" 
-               data-id-autor="${b.id_autor || authorId}" 
-               style="flex: 0 0 160px; scroll-snap-align: start; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s;">
-            <img src="${b.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=150&h=200&fit=crop'}" alt="${b.titulo}" style="width: 100%; height: 130px; object-fit: cover; border-radius: 8px;">
-            <div style="overflow: hidden;">
-              <h5 style="margin: 0; font-size: 0.85rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${b.titulo}">${b.titulo}</h5>
-              <span style="font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px;">${b.formatoLibro || 'Libro'}</span>
-            </div>
-          </div>
-        `).join('')}
+        ${cardsHtml}
       </div>
     `;
 
@@ -323,7 +465,7 @@ async function loadAndRenderRelatedBooks(authorId, authorNameQuery, currentBookI
       });
     });
   } else {
-    listContainer.innerHTML = `<p style="font-size: 0.9rem; color: #64748b; font-style: italic; margin: 0;">No se encontraron más libros registrados de este autor.</p>`;
+    listContainer.innerHTML = `<p style="font-size: 0.85rem; color: #64748b; font-style: italic; margin: 0;">No se encontraron más libros registrados de este autor.</p>`;
   }
 }
 
@@ -335,12 +477,15 @@ function renderPagination(pageData) {
   const totalPages = pageData.totalPages || 1;
   const totalElements = pageData.totalElements || 0;
 
+  const prevDisabled = number === 0 ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : '';
+  const nextDisabled = number >= totalPages - 1 ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : '';
+
   paginationContainer.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding: 16px; border-top: 1px solid #e2e8f0; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 10px;">
-      <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Página ${number + 1} de ${totalPages} (Total: ${totalElements} libros)</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 14px 16px; border-top: 1px solid #e2e8f0; background: #ffffff; border-radius: 8px; flex-wrap: wrap; gap: 10px;">
+      <span style="font-size: 0.825rem; color: #64748b; font-weight: 500;">Página ${number + 1} de ${totalPages} (Total: ${totalElements} libros)</span>
       <div style="display: flex; gap: 8px;">
-        <button id="prevPageBtn" ${number === 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''} style="padding: 6px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.85rem; font-weight: 500;">Anterior</button>
-        <button id="nextPageBtn" ${number >= totalPages - 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''} style="padding: 6px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.85rem; font-weight: 500;">Siguiente</button>
+        <button id="prevPageBtn" ${prevDisabled} style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem; color: #475569; font-weight: 500;">Anterior</button>
+        <button id="nextPageBtn" ${nextDisabled} style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem; color: #475569; font-weight: 500;">Siguiente</button>
       </div>
     </div>
   `;
@@ -401,7 +546,7 @@ async function openCreateBookModal() {
   if (!modal || !bodyContent) return;
 
   modal.style.display = 'flex';
-  bodyContent.innerHTML = `<p style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando formulario...</p>`;
+  bodyContent.innerHTML = `<p style="text-align: center; padding: 20px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando formulario...</p>`;
 
   let authors = [];
   let languages = [];
@@ -411,7 +556,6 @@ async function openCreateBookModal() {
   let bookFormats = [];
 
   try {
-    // Carga paralela de datos de las APIs
     const [authorRes, langRes, catRes, genRes, typeRes, formatRes] = await Promise.allSettled([
       fetchAuthors(0, 100),
       fetchIdiomas(),
@@ -476,7 +620,7 @@ async function openCreateBookModal() {
       const catId = c.id || c.idCategoria;
       const catName = c.nombre || c.categoria || 'Sin nombre';
       return `
-          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.825rem; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
             <input type="checkbox" class="cat-checkbox" value="${catId}"> ${catName}
           </label>
         `;
@@ -488,7 +632,7 @@ async function openCreateBookModal() {
       const genId = g.id || g.idGenero;
       const genName = g.nombre || g.genero || 'Sin nombre';
       return `
-          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.825rem; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
             <input type="checkbox" class="gen-checkbox" value="${genId}" data-nombre="${genName}"> ${genName}
           </label>
         `;

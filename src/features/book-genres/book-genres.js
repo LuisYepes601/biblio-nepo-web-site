@@ -16,9 +16,43 @@ export async function loadBookGenresView() {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="view-header">
-      <h1>Géneros de Libro</h1>
-      <p>Administra las categorías y géneros literarios disponibles en la biblioteca.</p>
+    <!-- CARRUSEL HERO SUPERIOR -->
+    <div class="carousel-hero-container" id="genresCarouselContainer">
+      <div class="carousel-track" id="genresCarouselTrack">
+        
+        <div class="carousel-slide" style="background-image: url('https://images.unsplash.com/photo-1463320726281-696a485928c7?auto=format&fit=crop&w=1200&q=80');">
+          <div class="carousel-slide-overlay"></div>
+          <div class="carousel-slide-content">
+            <span class="carousel-slide-tag">Módulo de Géneros</span>
+            <h2 class="carousel-slide-title">Explora los Géneros Literarios</h2>
+            <p class="carousel-slide-desc">Organiza y clasifica la colección de libros según su estilo, narrativa o temática.</p>
+          </div>
+        </div>
+
+        <div class="carousel-slide" style="background-image: url('https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1200&q=80');">
+          <div class="carousel-slide-overlay"></div>
+          <div class="carousel-slide-content">
+            <span class="carousel-slide-tag">Administración</span>
+            <h2 class="carousel-slide-title">Clasificación Estructurada</h2>
+            <p class="carousel-slide-desc">Crea nuevos géneros o edita los existentes para mantener actualizado el catálogo.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="carousel-controls">
+        <div class="carousel-dots">
+          <span class="carousel-dot active"></span>
+          <span class="carousel-dot"></span>
+        </div>
+        <button class="carousel-arrow" id="prevGenresCarouselBtn" title="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="carousel-arrow" id="nextGenresCarouselBtn" title="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+
+    <div class="view-header" style="margin-bottom: 20px;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Géneros de Libro</h1>
+      <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Administra las categorías y géneros literarios disponibles en la biblioteca.</p>
     </div>
 
     <section class="genres-module-container">
@@ -27,7 +61,7 @@ export async function loadBookGenresView() {
           <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b;">Géneros Registrados</h3>
           <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Clasificación temática para los libros del catálogo.</p>
         </div>
-        <button class="btn-primary" id="btnNewGenre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <button class="btn-primary" id="btnNewGenre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
           <i class="fa-solid fa-tags"></i> Nuevo Género
         </button>
       </div>
@@ -58,7 +92,7 @@ export async function loadBookGenresView() {
     <!-- Modal Status de Carga -->
     <div id="loadingGenreModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1100;">
       <div style="background: white; padding: 24px 36px; border-radius: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-        <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: #6366f1;"></i>
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.8rem; color: #2563eb;"></i>
         <div>
           <h4 id="loadingGenreText" style="margin: 0; font-size: 1rem; color: #1e293b;">Procesando solicitud...</h4>
           <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">Por favor, espera un momento.</p>
@@ -67,6 +101,7 @@ export async function loadBookGenresView() {
     </div>
   `;
 
+  initGenresCarousel();
   initSearchListeners();
   initModalListeners();
   initNewGenreButtonListener();
@@ -74,6 +109,60 @@ export async function loadBookGenresView() {
   currentPage = 0;
   currentSearchQuery = '';
   await loadAndRenderGenres();
+}
+
+function initGenresCarousel() {
+  const track = document.getElementById('genresCarouselTrack');
+  const slides = track ? track.querySelectorAll('.carousel-slide') : [];
+  const dots = document.querySelectorAll('#genresCarouselContainer .carousel-dot');
+  const prevBtn = document.getElementById('prevGenresCarouselBtn');
+  const nextBtn = document.getElementById('nextGenresCarouselBtn');
+  const container = document.getElementById('genresCarouselContainer');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+
+  function updateCarousel(index) {
+    if (index < 0) currentIndex = slides.length - 1;
+    else if (index >= slides.length) currentIndex = 0;
+    else currentIndex = index;
+
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === currentIndex);
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      updateCarousel(currentIndex + 1);
+    }, 4000);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { updateCarousel(currentIndex - 1); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { updateCarousel(currentIndex + 1); startAutoplay(); });
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => { updateCarousel(idx); startAutoplay(); });
+  });
+
+  if (container) {
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+  }
+
+  startAutoplay();
 }
 
 function getPageSizeByDevice() {
@@ -140,7 +229,7 @@ function renderGenres(items) {
               ${nombre}
             </span>
             <div style="display: flex; gap: 4px;">
-              <button class="icon-btn btn-genre-details" data-id="${id}" title="Ver Auditoría" style="background: none; border: none; cursor: pointer; color: #6366f1; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-eye"></i></button>
+              <button class="icon-btn btn-genre-details" data-id="${id}" title="Ver Auditoría" style="background: none; border: none; cursor: pointer; color: #2563eb; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-eye"></i></button>
               <button class="icon-btn btn-genre-edit" data-id="${id}" title="Editar" style="background: none; border: none; cursor: pointer; color: #475569; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-pen"></i></button>
               <button class="icon-btn btn-genre-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="background: none; border: none; cursor: pointer; color: #ef4444; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -190,7 +279,7 @@ async function openGenreDetailsModal(id) {
 
   body.innerHTML = `
     <div style="text-align: center; padding: 30px; color: #64748b;">
-      <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #6366f1; margin-bottom: 12px;"></i>
+      <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #2563eb; margin-bottom: 12px;"></i>
       <p style="margin: 0; font-size: 0.9rem;">Cargando datos de auditoría...</p>
     </div>
   `;
@@ -309,7 +398,7 @@ function openGenreEditModal(id) {
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
         <button type="button" id="cancelEditGenreBtn" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
-        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-weight: 600;">Guardar Cambios</button>
+        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
@@ -379,7 +468,7 @@ function openGenreCreateModal() {
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
         <button type="button" id="cancelCreateGenreBtn" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
-        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-weight: 600;">Registrar</button>
+        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Registrar</button>
       </div>
     </form>
   `;
@@ -446,7 +535,7 @@ function renderPaginationControls(total, page) {
       const active = i === page;
       pageBtns += `
         <button class="genre-page-btn" data-page="${i}" 
-                style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${active ? '#6366f1' : '#cbd5e1'}; background: ${active ? '#6366f1' : 'white'}; color: ${active ? 'white' : '#475569'}; cursor: pointer; font-size: 0.85rem; font-weight: ${active ? '700' : '500'}; min-width: 34px;">
+                style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${active ? '#2563eb' : '#cbd5e1'}; background: ${active ? '#2563eb' : 'white'}; color: ${active ? 'white' : '#475569'}; cursor: pointer; font-size: 0.85rem; font-weight: ${active ? '700' : '500'}; min-width: 34px;">
           ${i + 1}
         </button>
       `;

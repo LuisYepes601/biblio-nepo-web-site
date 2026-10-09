@@ -2,9 +2,11 @@ import { API_CONFIG } from '../../core/config/api.config.js';
 
 /**
  * Obtiene las cabeceras básicas con el Token de autenticación.
+ * Busca tanto 'authToken' como 'token' de forma tolerante.
  */
 function getAuthHeaders() {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const rawToken = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = rawToken ? rawToken.replace(/^["']|["']$/g, '') : null;
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
@@ -71,21 +73,19 @@ export async function createBook(formData, idAutor = null) {
   try {
     let targetUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIBROS_ADMIN}`;
     
-    // Evita enviar 'undefined', 'null' o cadenas vacías como parámetro de URL
     if (idAutor !== null && idAutor !== undefined && idAutor !== '' && idAutor !== 'null' && idAutor !== 'undefined') {
       targetUrl += `?id_autor=${encodeURIComponent(idAutor)}`;
     }
 
     const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: getAuthHeaders(), // Conserva la cabecera 'Authorization: Bearer' sin fijar 'Content-Type'
+      headers: getAuthHeaders(),
       body: formData
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       
-      // Captura respuestas de validación complejas de Spring Boot (message, errors o error)
       let errorMessage = errorData.message;
       if (Array.isArray(errorData.errors)) {
         errorMessage = errorData.errors.map(err => err.defaultMessage || err.message).join(', ');
@@ -108,7 +108,7 @@ export async function createBook(formData, idAutor = null) {
  */
 export async function fetchCategorias(pageNumber = 0, pageSize = 100) {
   try {
-    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIAS}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
+    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GENEROS_LIBRO_ADMIN}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -145,12 +145,16 @@ export async function fetchTiposLibro(page = 0, size = 100) {
     console.error("Error en fetchTiposLibro:", error);
     return { content: [] };
   }
-}/**
- * Consulta la lista de formatos de libro.
+}
+
+/**
+ * Consulta la lista de formatos de libro utilizando la ruta administrativa.
  */
 export async function fetchFormatosLibro(page = 0, size = 100) {
   try {
-    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FORMATO_LIBROS}?page=${page}&size=${size}`;
+    const endpoint = API_CONFIG.ENDPOINTS?.FORMATS_ADMIN || API_CONFIG.ENDPOINTS?.FORMATO_LIBROS_ADMIN || '/api/v1/formato-libros/admin';
+    const url = `${API_CONFIG.BASE_URL}${endpoint}?page=${page}&size=${size}`;
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {

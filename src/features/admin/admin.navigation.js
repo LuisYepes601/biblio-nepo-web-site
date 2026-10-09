@@ -8,6 +8,42 @@ import { loadRolesView } from '../roles/roles.js';
 import { loadFormatsView } from '../formats/formats.js';
 import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
 
+export function navigateToView(view) {
+  const container = document.getElementById('admin-sidebar-container');
+  if (container) {
+    const navItems = container.querySelectorAll('.sidebar-nav li');
+    navItems.forEach(item => {
+      const link = item.querySelector('a');
+      if (link && link.dataset.view === view) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  if (view === 'dashboard') {
+    loadDashboardView();
+    switchView('dashboard'); 
+  } else if (view === 'catalog') {
+    loadBooksView();
+  } else if (view === 'categories') {
+    loadCategoriesView();
+  } else if (view === 'genres') {
+    loadBookGenresView();
+  } else if (view === 'formats') {
+    loadFormatsView();
+  } else if (view === 'authors') {
+    loadAuthorsView();
+  } else if (view === 'id-types') {
+    loadIdentificationTypesView();
+  } else if (view === 'users') {
+    loadUsersView();
+  } else if (view === 'roles') {
+    loadRolesView();
+  }
+}
+
 export function initAdminNavigation() {
   const container = document.getElementById('admin-sidebar-container');
   if (!container) return;
@@ -15,44 +51,64 @@ export function initAdminNavigation() {
   container.innerHTML = `
     <aside class="sidebar">
       <div class="sidebar-top">
-        <div class="brand-box">
-          <div class="brand-icon"><i class="fa-solid fa-book-open"></i></div>
-          <span>BiblioNepo</span>
-        </div>
 
-        <!-- Tarjeta de perfil interactiva para ir a la vista de perfil -->
-        <div class="user-profile-card" id="btnProfileView" style="cursor: pointer;">
-          <div class="user-info">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
-            <div>
-              <div class="user-name">Carlos Admin</div>
-              <div class="user-role">Super Administrador</div>
-            </div>
+<!-- LOGO Y MARCA -->
+<div class="brand-box">
+  <img src="https://res.cloudinary.com/divhisdcx/image/upload/v1787950293/logo_biblionepo_circular_transparente_ts0glk.svg" alt="BiblioNepo Logo" class="brand-logo-img">
+  <span class="brand-name">BiblioNepo</span>
+</div>
+
+        <!-- TARJETA DE PERFIL INTERACTIVA -->
+        <div class="user-profile-card" id="btnProfileView" title="Ver mi perfil">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
+          <div class="user-details">
+            <span class="user-name">Carlos Admin</span>
+            <span class="user-role" id="user-role">Super Administrador</span>
           </div>
-          <i class="fa-solid fa-chevron-down profile-arrow"></i>
+          <i class="fa-solid fa-chevron-right profile-arrow"></i>
         </div>
 
+        <!-- MENÚ NAVEGACIÓN ORGANIZADO -->
         <nav class="sidebar-nav">
-          <ul id="adminNavList">
-            <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
-            <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book"></i> Catálogo Libros</a></li>
-            <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree"></i> Categorías</a></li>
-            <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags"></i> Géneros Libro</a></li>
-            <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook"></i> Formatos Libros</a></li>
-            <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather"></i> Autores</a></li>
-            <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card"></i> Tipos de Documento</a></li>
-            <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users"></i> Gestión Usuarios</a></li>
-            <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield"></i> Gestión Roles</a></li>
-            <li><a href="#prestamos" data-view="loans"><i class="fa-solid fa-bookmark"></i> Préstamos Activos</a></li>
-            <li><a href="#configuracion" data-view="settings"><i class="fa-solid fa-gear"></i> Configuración</a></li>
-          </ul>
+          
+          <div class="nav-section">
+            <span class="nav-section-title">PRINCIPAL</span>
+            <ul class="nav-list">
+              <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></a></li>
+              <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book"></i> <span>Catálogo Libros</span></a></li>
+              <li><a href="#prestamos" data-view="loans"><i class="fa-solid fa-bookmark"></i> <span>Préstamos Activos</span></a></li>
+            </ul>
+          </div>
+
+          <div class="nav-section">
+            <span class="nav-section-title">CATÁLOGO</span>
+            <ul class="nav-list">
+              <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree"></i> <span>Categorías</span></a></li>
+              <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags"></i> <span>Géneros Libro</span></a></li>
+              <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook"></i> <span>Formatos</span></a></li>
+              <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather"></i> <span>Autores</span></a></li>
+            </ul>
+          </div>
+
+          <div class="nav-section">
+            <span class="nav-section-title">ADMINISTRACIÓN</span>
+            <ul class="nav-list">
+              <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users"></i> <span>Gestión Usuarios</span></a></li>
+              <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield"></i> <span>Gestión Roles</span></a></li>
+              <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card"></i> <span>Tipos Documento</span></a></li>
+              <li><a href="#configuracion" data-view="settings"><i class="fa-solid fa-gear"></i> <span>Configuración</span></a></li>
+            </ul>
+          </div>
+
         </nav>
       </div>
 
-      <div class="sidebar-promo">
-        <h4>BiblioNepo Pro</h4>
-        <p>Sistema optimizado para la gestión bibliotecaria e institucional.</p>
-        <button class="promo-btn" id="btnGoToPublic">Sitio Público</button>
+      <!-- BOTÓN SITIO PÚBLICO FOOTER -->
+      <div class="sidebar-footer">
+        <button class="btn-public-site" id="btnGoToPublic">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          <span>Sitio Público</span>
+        </button>
       </div>
     </aside>
   `;
@@ -69,45 +125,21 @@ export function initAdminNavigation() {
   const btnProfileView = container.querySelector('#btnProfileView');
   if (btnProfileView) {
     btnProfileView.addEventListener('click', () => {
-      container.querySelectorAll('#adminNavList li').forEach(l => l.classList.remove('active'));
-      
-      // 1. Carga la estructura contenedora principal por si estabas en otra vista
+      container.querySelectorAll('.sidebar-nav li').forEach(l => l.classList.remove('active'));
       loadDashboardView();
-      
-      // 2. Cambia a la pestaña de perfil
       switchView('profile');
     });
   }
 
   // Navegación del menú lateral principal
-  const navItems = container.querySelectorAll('#adminNavList li');
+  const navItems = container.querySelectorAll('.sidebar-nav li');
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
-      navItems.forEach(l => l.classList.remove('active'));
-      item.classList.add('active');
-      
-      const view = item.querySelector('a').dataset.view;
-      
-      if (view === 'dashboard') {
-        loadDashboardView();
-        switchView('dashboard'); 
-      } else if (view === 'catalog') {
-        loadBooksView();
-      } else if (view === 'categories') {
-        loadCategoriesView();
-      } else if (view === 'genres') {
-        loadBookGenresView();
-      } else if (view === 'formats') {
-        loadFormatsView();
-      } else if (view === 'authors') {
-        loadAuthorsView();
-      } else if (view === 'id-types') {
-        loadIdentificationTypesView();
-      } else if (view === 'users') {
-        loadUsersView();
-      } else if (view === 'roles') {
-        loadRolesView();
+      const link = item.querySelector('a');
+      if (link) {
+        const view = link.dataset.view;
+        navigateToView(view);
       }
     });
   });

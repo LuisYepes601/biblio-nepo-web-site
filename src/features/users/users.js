@@ -1,6 +1,7 @@
 import { getAllUsers, createUser, updateUser, getUserDetails } from './users.api.js';
 import { API_CONFIG } from '../../core/config/api.config.js';
 import { updateProfilePhoto } from '../perfil/perfilApi.js';
+import { navigateToView } from '../admin/admin.navigation.js';
 
 let currentFilters = {
   nombre: '',
@@ -15,68 +16,109 @@ export async function loadUsersView() {
   const container = document.getElementById('admin-content-container');
   if (!container) return;
 
-  // 1. Inyectar HTML principal de la vista (Incluye Modales de Creación, Detalles y Edición)
+  // 1. Inyectar HTML principal de la vista
   container.innerHTML = `
-    <div class="view-header">
-      <h1>Gestión de Usuarios</h1>
-      <p>Administra accesos, asignación de roles y estados institucionales.</p>
-    </div>
-
-    <section class="users-module-container">
-      <div class="users-header">
-        <div>
-          <h3>Listado General</h3>
-          <p>Control de cuentas registradas en el sistema.</p>
-        </div>
-        <button class="btn-primary" id="btnNewUser">
-          <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
+    <div class="users-page-wrapper">
+      
+      <!-- BARRA SUPERIOR CON BOTÓN REGRESAR -->
+      <div class="users-top-bar" style="margin-bottom: 16px;">
+        <button class="btn-back-dashboard" id="btnBackToDashboard" style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e2e8f0; color: #334155; padding: 8px 14px; border-radius: 8px; font-size: 0.825rem; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s;">
+          <i class="fa-solid fa-arrow-left"></i> Regresar al Dashboard
         </button>
       </div>
 
-      <!-- Filtros de Búsqueda -->
-      <div class="users-filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
-        <input type="text" id="filterNombre" placeholder="Buscar por Nombre..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem;">
-        <input type="text" id="filterApellido" placeholder="Buscar por Apellido..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem;">
-        <input type="text" id="filterEmail" placeholder="Buscar por Email..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem;">
-        <input type="text" id="filterIdentificacion" placeholder="N° Identificación..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem;">
-        
-        <select id="filterRol" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem; background: white;">
-          <option value="">Todos los Roles</option>
-          <option value="1">Administrador</option>
-          <option value="2">Lector / Estudiante</option>
-          <option value="3">Bibliotecario</option>
-        </select>
+      <!-- CARRUSEL HERO AUTOMÁTICO CON FLEX 100% -->
+      <div class="carousel-hero-container" id="usersHeroCarousel" style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 28px; border: 1px solid #e2e8f0; background: #0f172a;">
+        <div class="carousel-track" id="usersCarouselTrack" style="display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 100%;">
+          
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Administración</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Gestión de Usuarios</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Administra accesos, asignación de roles y perfiles institucionales en el sistema.</p>
+            </div>
+          </div>
 
-        <select id="filterIsDelete" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.875rem; background: white;">
-          <option value="false">Activos</option>
-          <option value="true">Eliminados / Inactivos</option>
-          <option value="">Todos</option>
-        </select>
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Comunidad & Lectores</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Control de Accesos</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Garantiza la seguridad y la correcta asignación de permisos para estudiantes, bibliotecarios y administradores.</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="carousel-controls" style="position: absolute; bottom: 16px; right: 20px; z-index: 3; display: flex; align-items: center; gap: 8px;">
+          <div class="carousel-dots" style="display: flex; gap: 6px; margin-right: 6px;">
+            <span class="carousel-dot active" style="width: 20px; height: 7px; border-radius: 10px; background: #ffffff; cursor: pointer;"></span>
+            <span class="carousel-dot" style="width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); cursor: pointer;"></span>
+          </div>
+          <button class="carousel-arrow" id="usersPrevBtn" title="Anterior" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="carousel-arrow" id="usersNextBtn" title="Siguiente" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
       </div>
 
-      <!-- Tabla de Usuarios -->
-      <div class="users-table-wrapper" style="overflow-x: auto;">
-        <table class="users-table">
-          <thead>
-            <tr>
-              <th>Foto / Nombre</th>
-              <th>Segundo Nombre</th>
-              <th>Primer Apellido</th>
-              <th>Segundo Apellido</th>
-              <th>Identificación</th>
-              <th>Correo Electrónico</th>
-              <th>Fecha Nacimiento</th>
-              <th class="text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr>
-              <td colspan="8" style="text-align: center; padding: 24px;">Cargando usuarios...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <!-- CONTENEDOR PRINCIPAL -->
+      <section class="users-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
+        <div class="users-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Listado General</h3>
+            <p style="margin: 2px 0 0 0; font-size: 0.825rem; color: #64748b;">Control de cuentas registradas en el sistema.</p>
+          </div>
+          <button class="btn-primary" id="btnNewUser" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
+          </button>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="users-filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <input type="text" id="filterNombre" placeholder="Buscar por Nombre..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; background: white;">
+          <input type="text" id="filterApellido" placeholder="Buscar por Apellido..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; background: white;">
+          <input type="text" id="filterEmail" placeholder="Buscar por Email..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; background: white;">
+          <input type="text" id="filterIdentificacion" placeholder="N° Identificación..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; background: white;">
+          
+          <select id="filterRol" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; background: white; outline: none;">
+            <option value="">Todos los Roles</option>
+            <option value="1">Administrador</option>
+            <option value="2">Lector / Estudiante</option>
+            <option value="3">Bibliotecario</option>
+          </select>
+
+          <select id="filterIsDelete" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; background: white; outline: none;">
+            <option value="false">Activos</option>
+            <option value="true">Eliminados / Inactivos</option>
+            <option value="">Todos</option>
+          </select>
+        </div>
+
+        <!-- Tabla de Usuarios -->
+        <div class="users-table-wrapper" style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <table class="users-table" style="width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Foto / Nombre</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Segundo Nombre</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Primer Apellido</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Segundo Apellido</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Identificación</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Correo Electrónico</th>
+                <th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b;">Fecha Nacimiento</th>
+                <th class="text-right" style="padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b; text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 24px; color: #64748b;">Cargando usuarios...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
 
     <!-- MODAL NATIVO DE CREACIÓN DE USUARIO -->
     <div id="createUserModal" class="user-modal-overlay">
@@ -237,10 +279,19 @@ export async function loadUsersView() {
     </div>
   `;
 
-  // 2. Inyectar estilos CSS indispensables de los Modales
-  injectModalStyles();
+  // Evento del botón de regreso
+  const btnBack = document.getElementById('btnBackToDashboard');
+  if (btnBack) {
+    btnBack.addEventListener('click', () => {
+      navigateToView('dashboard');
+    });
+  }
 
-  // 3. Inicializar lógica de eventos y renderizado
+  // Inicializar carrusel hero
+  initUsersCarousel();
+
+  // Inyectar estilos de modales y configurar eventos
+  injectModalStyles();
   setupModalEvents();
   setupFilterEvents();
   setupDetailsModalEvents();
@@ -250,12 +301,77 @@ export async function loadUsersView() {
 }
 
 /**
+ * Control automático de movimiento continuo para el carrusel de Usuarios
+ */
+function initUsersCarousel() {
+  const track = document.getElementById('usersCarouselTrack');
+  const slides = track ? track.querySelectorAll('.carousel-slide') : [];
+  const dots = document.querySelectorAll('#usersHeroCarousel .carousel-dot');
+  const prevBtn = document.getElementById('usersPrevBtn');
+  const nextBtn = document.getElementById('usersNextBtn');
+  const container = document.getElementById('usersHeroCarousel');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+
+  function updateCarousel(index) {
+    if (index < 0) currentIndex = slides.length - 1;
+    else if (index >= slides.length) currentIndex = 0;
+    else currentIndex = index;
+
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    dots.forEach((dot, idx) => {
+      if (idx === currentIndex) {
+        dot.style.width = '20px';
+        dot.style.borderRadius = '10px';
+        dot.style.background = '#ffffff';
+      } else {
+        dot.style.width = '7px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = 'rgba(255, 255, 255, 0.4)';
+      }
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      updateCarousel(currentIndex + 1);
+    }, 3500);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { updateCarousel(currentIndex - 1); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { updateCarousel(currentIndex + 1); startAutoplay(); });
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => { updateCarousel(idx); startAutoplay(); });
+  });
+
+  if (container) {
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+  }
+
+  startAutoplay();
+}
+
+/**
  * Consulta la API pasando los filtros actuales y renderiza la tabla.
  */
 async function fetchAndRenderUsers() {
   const tbody = document.getElementById('usersTableBody');
   if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px;">Cargando usuarios...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: #64748b;">Cargando usuarios...</td></tr>`;
   }
 
   try {
@@ -290,8 +406,8 @@ function renderUsersTable(users) {
 
   tbody.innerHTML = users.map(user => {
     const avatarImg = user.urlFotoPerfil 
-      ? `<img src="${user.urlFotoPerfil}" alt="${user.nombre}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(user.nombre)}&background=random';" />`
-      : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #475569; flex-shrink: 0;">${(user.nombre || 'U').charAt(0)}</div>`;
+      ? `<img src="${user.urlFotoPerfil}" alt="${user.nombre}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(user.nombre)}&background=random';" />`
+      : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #475569; flex-shrink: 0;">${(user.nombre || 'U').charAt(0)}</div>`;
 
     const fechaNac = user.fechaNacimiento 
       ? new Date(user.fechaNacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -299,25 +415,27 @@ function renderUsersTable(users) {
 
     return `
       <tr data-id="${user.id}">
-        <td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
           <div style="display: flex; align-items: center; gap: 10px;">
             ${avatarImg}
-            <strong style="white-space: nowrap;">${user.nombre || 'N/A'}</strong>
+            <strong style="white-space: nowrap; font-size: 0.85rem; color: #0f172a;">${user.nombre || 'N/A'}</strong>
           </div>
         </td>
-        <td>${user.segundoNombre || '-'}</td>
-        <td>${user.primerApellido || 'N/A'}</td>
-        <td>${user.segundoApellido || 'N/A'}</td>
-        <td>${user.numeroIdentificacion || 'N/A'}</td>
-        <td>${user.email || 'N/A'}</td>
-        <td style="white-space: nowrap;">${fechaNac}</td>
-        <td class="text-right" style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-          <button class="icon-btn btn-user-details" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;" title="Ver Detalles" data-id="${user.id}">
-            <i class="fa-solid fa-eye"></i>
-          </button>
-          <button class="icon-btn btn-user-edit" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;" title="Editar Datos" data-id="${user.id}">
-            <i class="fa-solid fa-pen"></i>
-          </button>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">${user.segundoNombre || '-'}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">${user.primerApellido || 'N/A'}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">${user.segundoApellido || 'N/A'}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">${user.numeroIdentificacion || 'N/A'}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">${user.email || 'N/A'}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155; white-space: nowrap;">${fechaNac}</td>
+        <td class="text-right" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: right;">
+          <div style="display: flex; gap: 4px; justify-content: flex-end;">
+            <button class="icon-btn btn-user-details" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #6366f1; padding: 4px 6px; font-size: 0.8rem;" title="Ver Detalles" data-id="${user.id}">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button class="icon-btn btn-user-edit" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #475569; padding: 4px 6px; font-size: 0.8rem;" title="Editar Datos" data-id="${user.id}">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -349,11 +467,9 @@ function setupEditModalEvents() {
 
     const userId = btn.getAttribute('data-id');
     
-    // Primero cargamos los selects y mostramos el modal
     await loadEditModalDropdowns();
     modal.style.display = 'flex';
 
-    // Rellenamos el formulario consultando los detalles reales del usuario seleccionado
     try {
       const response = await getUserDetails(userId);
       
@@ -483,50 +599,50 @@ function setupDetailsModalEvents() {
       
       let bigAvatarHtml = '';
       if (imgElement && imgElement.src) {
-        bigAvatarHtml = `<img id="modalProfileImg" src="${imgElement.src}" alt="Foto de perfil" title="Haz clic para cambiar la foto" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" />`;
+        bigAvatarHtml = `<img id="modalProfileImg" src="${imgElement.src}" alt="Foto de perfil" title="Haz clic para cambiar la foto" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #eef2ff; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" />`;
       } else {
-        bigAvatarHtml = `<div id="modalProfileImg" title="Haz clic para cambiar la foto" style="width: 120px; height: 120px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 600; color: #475569; border: 4px solid #cbd5e1; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${initialText}</div>`;
+        bigAvatarHtml = `<div id="modalProfileImg" title="Haz clic para cambiar la foto" style="width: 100px; height: 100px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 600; color: #475569; border: 3px solid #cbd5e1; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${initialText}</div>`;
       }
 
       bodyContainer.innerHTML = `
         <div style="grid-column: span 2; display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; position: relative;">
           ${bigAvatarHtml}
-          <span style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">(Haz clic en la foto para cambiarla)</span>
+          <span style="font-size: 0.725rem; color: #64748b; margin-top: 6px;">(Haz clic en la foto para cambiarla)</span>
           <input type="file" id="inputUploadFoto" accept="image/*" style="display: none;" />
-          <h4 style="margin: 8px 0 0 0; font-size: 1.05rem; color: #1e293b;">${details.nombreCompleto || row?.children[0].querySelector('strong')?.textContent || 'Usuario del Sistema'}</h4>
+          <h4 style="margin: 8px 0 0 0; font-size: 1.05rem; color: #0f172a; font-weight: 700;">${details.nombreCompleto || row?.children[0].querySelector('strong')?.textContent || 'Usuario del Sistema'}</h4>
           <span style="font-size: 0.8rem; color: #64748b;">${details.email || row?.children[5]?.textContent || ''}</span>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Tipo Identificación</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.tipoIdentificacion || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Tipo Identificación</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.tipoIdentificacion || 'N/A'}</p>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Rol</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.rol || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Rol</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.rol || 'N/A'}</p>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">País</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.pais || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">País</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.pais || 'N/A'}</p>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Departamento</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.departamento || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Departamento</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.departamento || 'N/A'}</p>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Ciudad</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.ciudad || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Ciudad</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.ciudad || 'N/A'}</p>
         </div>
         <div>
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Barrio</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.barrio || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Barrio</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.barrio || 'N/A'}</p>
         </div>
         <div style="grid-column: span 2;">
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Complemento Dirección</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.complemento || 'N/A'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Complemento Dirección</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.complemento || 'N/A'}</p>
         </div>
         <div style="grid-column: span 2;">
-          <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Más Detalles</label>
-          <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #1e293b; font-weight: 500;">${details.masDetalles || 'Ninguno'}</p>
+          <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Más Detalles</label>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #0f172a; font-weight: 600;">${details.masDetalles || 'Ninguno'}</p>
         </div>
       `;
 
@@ -555,7 +671,7 @@ function setupDetailsModalEvents() {
             newImg.id = 'modalProfileImg';
             newImg.src = localImageUrl;
             newImg.alt = 'Foto de perfil';
-            newImg.style.cssText = "width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: opacity 0.2s;";
+            newImg.style.cssText = "width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #eef2ff; cursor: pointer; transition: opacity 0.2s;";
             newImg.title = "Haz clic para cambiar la foto";
             newImg.addEventListener('click', () => fileInput.click());
             parent.replaceChild(newImg, profileContainer);
@@ -721,28 +837,28 @@ function injectModalStyles() {
     .user-modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(15, 23, 42, 0.7);
+      background: rgba(15, 23, 42, 0.6);
       backdrop-filter: blur(4px);
-      z-index: 999999;
+      z-index: 1000;
       display: none;
       align-items: center; justify-content: center;
     }
     .user-modal-card {
       background: #ffffff;
-      width: 600px; max-width: 90%; max-height: 90vh;
-      border-radius: 16px; overflow: hidden;
+      width: 580px; max-width: 90%; max-height: 90vh;
+      border-radius: 12px; overflow: hidden;
       display: flex; flex-direction: column;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
     .user-modal-header {
       padding: 16px 20px; background: #0f172a; color: #ffffff;
       display: flex; justify-content: space-between; align-items: center;
     }
-    .user-modal-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-    .user-modal-close { background: none; border: none; color: #ffffff; font-size: 1.5rem; cursor: pointer; }
+    .user-modal-header h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+    .user-modal-close { background: none; border: none; color: #ffffff; font-size: 1.3rem; cursor: pointer; }
     .user-modal-body { padding: 20px; overflow-y: auto; }
-    .user-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .user-modal-body label { display: block; font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .user-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .user-modal-body label { display: block; font-size: 0.785rem; font-weight: 600; color: #334155; margin-bottom: 4px; }
     .user-modal-body input[type="text"],
     .user-modal-body input[type="email"],
     .user-modal-body input[type="password"],
@@ -750,6 +866,7 @@ function injectModalStyles() {
     .user-select {
       width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1;
       border-radius: 6px; font-size: 0.85rem; box-sizing: border-box;
+      outline: none;
     }
     .usr-avatar-box {
       display: flex; align-items: center; gap: 12px;
@@ -759,11 +876,11 @@ function injectModalStyles() {
       width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0;
       display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
     }
-    .usr-file-btn { color: #2563eb; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .usr-file-btn { color: #6366f1; font-size: 0.825rem; font-weight: 600; cursor: pointer; }
     .user-modal-actions {
-      display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0;
+      display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;
     }
-    .btn-secondary { background: #e2e8f0; color: #334155; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .btn-secondary { background: #ffffff; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 6px; font-weight: 500; font-size: 0.825rem; cursor: pointer; }
   `;
   document.head.appendChild(style);
 }
