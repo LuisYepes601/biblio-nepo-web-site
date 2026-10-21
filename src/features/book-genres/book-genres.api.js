@@ -1,12 +1,16 @@
 import { API_CONFIG } from '../../core/config/api.config.js';
 
 /**
- * Obtiene la lista paginada de géneros de libro.
+ * Obtiene la lista paginada de géneros de libro activos (isDelete = false).
  */
-
 export async function fetchBookGenres(page = 0, size = 10, search = '') {
   try {
-    const params = new URLSearchParams({ page, size, nombre: search });
+    const params = new URLSearchParams({ 
+      page, 
+      size, 
+      nombre: search,
+      isDelete: false 
+    });
     
     // Recuperamos el token y limpiamos comillas extras por seguridad
     let token = localStorage.getItem('authToken');
@@ -39,7 +43,6 @@ export async function fetchBookGenres(page = 0, size = 10, search = '') {
  * Obtiene un género de libro por su ID (detalles de auditoría).
  */
 export async function fetchBookGenreById(id) {
-  
   const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');
@@ -62,7 +65,6 @@ export async function fetchBookGenreById(id) {
  * Crea un nuevo género de libro (Nombre y Descripción).
  */
 export async function createBookGenre(data) {
-
   const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');

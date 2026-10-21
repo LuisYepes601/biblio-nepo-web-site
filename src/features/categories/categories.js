@@ -63,21 +63,22 @@ export async function loadCategoriesView() {
       <section class="categories-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
         <div class="categories-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Listado de Categorías</h3>
-            <p style="margin: 2px 0 0 0; font-size: 0.825rem; color: #64748b;">Control de taxonomías y organización del catálogo.</p>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Listado de Categorías</h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Control de taxonomías y organización del catálogo.</p>
           </div>
-          <button class="btn-primary" id="btnNewCategory" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          <button class="btn-primary" id="btnNewCategory" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> Nueva Categoría
           </button>
         </div>
 
         <div class="categories-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
           <input type="text" id="searchCategoryName" placeholder="Buscar categoría por nombre..." 
-                 style="flex: 1; min-width: 220px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; color: #0f172a; background: #ffffff;">
+                 style="flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.875rem; color: #0f172a; background: #ffffff;">
         </div>
 
-        <div class="categories-grid" id="categoriesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
-          <p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando categorías...</p>
+        <!-- TABLA / GRILLA DE DATOS -->
+        <div id="categoriesTableContainer" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+          <p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando categorías...</p>
         </div>
 
         <div id="categoriesPagination"></div>
@@ -194,10 +195,7 @@ function initCategoriesCarousel() {
 }
 
 function getPageSizeByDevice() {
-    const width = window.innerWidth;
-    if (width < 768) return 9;
-    if (width < 1024) return 15;
-    return 20;
+    return 10;
 }
 
 async function loadAndRenderCategories(categoryName = currentSearchQuery, page = currentPage) {
@@ -205,9 +203,9 @@ async function loadAndRenderCategories(categoryName = currentSearchQuery, page =
     currentPage = page;
     const pageSize = getPageSizeByDevice();
 
-    const grid = document.getElementById('categoriesGrid');
-    if (grid) {
-        grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando categorías...</p>`;
+    const container = document.getElementById('categoriesTableContainer');
+    if (container) {
+        container.innerHTML = `<p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando categorías...</p>`;
     }
 
     try {
@@ -225,47 +223,120 @@ async function loadAndRenderCategories(categoryName = currentSearchQuery, page =
             currentCategories = [];
         }
 
-        renderCategories(currentCategories);
+        renderCategoriesTable(currentCategories);
         renderPaginationControls(totalPages, currentPage);
     } catch (error) {
         console.error('Error al cargar categorías:', error);
         currentCategories = [];
-        renderCategories([]);
+        renderCategoriesTable([]);
         renderPaginationControls(0, 0);
     }
 }
 
-function renderCategories(categories) {
-    const grid = document.getElementById('categoriesGrid');
-    if (!grid) return;
+/* RENDERIZADO SIN COLUMNA DE ID */
+function renderCategoriesTable(categories) {
+    const container = document.getElementById('categoriesTableContainer');
+    if (!container) return;
 
     if (!categories || categories.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">No se encontraron categorías registradas.</p>`;
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px;">
+            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 500;">No se encontraron categorías registradas.</p>
+          </div>
+        `;
         return;
     }
 
-    grid.innerHTML = categories.map(cat => {
+    const rows = categories.map(cat => {
         const id = cat.id || cat.idCategoria;
-        const nombre = cat.nombre || cat.categoria || 'Sin nombre';
-        const descripcion = cat.descripcion || 'Sin descripción';
+        const rawNombre = cat.nombre || cat.categoria || 'Sin nombre';
+        const nombre = rawNombre.trim();
+        const rawDesc = cat.descripcion || '';
+        const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción';
+        const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
         return `
-      <div class="category-card" style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 0.725rem; font-weight: 700; color: #6366f1; background: #eef2ff; padding: 3px 8px; border-radius: 6px;">#${id}</span>
-            <div style="display: flex; gap: 4px;">
-              <button class="icon-btn btn-details" data-id="${id}" title="Ver Detalles" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #6366f1; padding: 4px 6px; font-size: 0.78rem;"><i class="fa-solid fa-eye"></i></button>
-              <button class="icon-btn btn-edit" data-id="${id}" title="Editar" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #475569; padding: 4px 6px; font-size: 0.78rem;"><i class="fa-solid fa-pen"></i></button>
-              <button class="icon-btn btn-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #ef4444; padding: 4px 6px; font-size: 0.78rem;"><i class="fa-solid fa-trash"></i></button>
-            </div>
-          </div>
-          <h4 style="margin: 0 0 4px 0; font-size: 0.925rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${nombre}">${nombre}</h4>
-          <p style="margin: 0; font-size: 0.785rem; color: #64748b; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${descripcion}">${descripcion}</p>
-        </div>
+          <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <td style="padding: 14px 20px; font-weight: 600; color: #0f172a; text-transform: capitalize; width: 35%;">
+              ${nombre.toLowerCase()}
+            </td>
+            <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 50%;">
+              ${descripcion}
+            </td>
+            <td style="padding: 14px 20px; text-align: right; width: 15%;">
+              <div style="display: inline-flex; gap: 4px; align-items: center;">
+                <button class="icon-btn btn-details" data-id="${id}" title="Ver Detalles" style="
+                  background: transparent; 
+                  border: 1px solid #e2e8f0; 
+                  width: 30px; 
+                  height: 30px; 
+                  border-radius: 6px; 
+                  cursor: pointer; 
+                  color: #6366f1; 
+                  display: inline-flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  font-size: 0.8rem; 
+                  transition: background 0.15s ease;
+                " onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='transparent'">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+
+                <button class="icon-btn btn-edit" data-id="${id}" title="Editar" style="
+                  background: transparent; 
+                  border: 1px solid #e2e8f0; 
+                  width: 30px; 
+                  height: 30px; 
+                  border-radius: 6px; 
+                  cursor: pointer; 
+                  color: #475569; 
+                  display: inline-flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  font-size: 0.8rem; 
+                  transition: background 0.15s ease;
+                " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+
+                <button class="icon-btn btn-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+                  background: transparent; 
+                  border: 1px solid #e2e8f0; 
+                  width: 30px; 
+                  height: 30px; 
+                  border-radius: 6px; 
+                  cursor: pointer; 
+                  color: #ef4444; 
+                  display: inline-flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  font-size: 0.8rem; 
+                  transition: background 0.15s ease;
+                " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <th style="padding: 12px 20px;">Categoría</th>
+              <th style="padding: 12px 20px;">Descripción</th>
+              <th style="padding: 12px 20px; text-align: right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
       </div>
     `;
-    }).join('');
 
     document.querySelectorAll('.btn-details').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -313,11 +384,6 @@ function openDetailsModal(id) {
 
     bodyContent.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
-      <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Identificador</span>
-        <span style="color: #0f172a; font-weight: 600;">#${details.id || details.idCategoria || id}</span>
-      </div>
-
       <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
         <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Nombre</span>
         <span style="color: #0f172a; font-weight: 600;">${nombre}</span>
@@ -429,7 +495,7 @@ function renderPaginationControls(total, page) {
     }
 
     container.innerHTML = `
-    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
       <button id="btnPrevPage" ${isFirstPage ? 'disabled' : ''} 
               style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isFirstPage ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; color: #475569; opacity: ${isFirstPage ? '0.4' : '1'}; font-weight: 500;">
         <i class="fa-solid fa-chevron-left"></i> Anterior

@@ -1,12 +1,16 @@
 import { API_CONFIG } from '../../core/config/api.config.js';
 
 /**
- * Obtiene la lista paginada de tipos de identificación.
+ * Obtiene la lista paginada de tipos de identificación activos (isDelete = false).
  */
 export async function fetchIdentificationTypes(page = 0, size = 10, search = '') {
-  
   try {
-    const params = new URLSearchParams({ page, size, nombre: search });
+    const params = new URLSearchParams({ 
+      page, 
+      size, 
+      nombre: search,
+      isDelete: false 
+    });
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TIPO_IDENTIFICACIONES}?${params.toString()}`);
     if (!response.ok) throw new Error('Error al obtener los tipos de identificación.');
     return await response.json();
@@ -20,7 +24,6 @@ export async function fetchIdentificationTypes(page = 0, size = 10, search = '')
  * Obtiene un tipo de identificación por su ID (detalles de auditoría).
  */
 export async function fetchIdentificationTypeById(id) {
-
   const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');
@@ -40,11 +43,10 @@ export async function fetchIdentificationTypeById(id) {
 }
 
 /**
- * Crea un nuevo tipo de identificación (Nombre y Descripción).
+ * Crea un nuevo tipo de identificación.
  */
 export async function createIdentificationType(data) {
-
- const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');
   }
@@ -63,7 +65,7 @@ export async function createIdentificationType(data) {
 }
 
 /**
- * Actualiza un tipo de identificación existente (Nombre y Descripción).
+ * Actualiza un tipo de identificación existente.
  */
 export async function updateIdentificationType(id, data) {
   const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');

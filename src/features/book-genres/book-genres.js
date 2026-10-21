@@ -56,25 +56,29 @@ export async function loadBookGenresView() {
     </div>
 
     <section class="genres-module-container">
+      <!-- CABECERA Y BOTÓN NUEVO -->
       <div class="genres-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
         <div>
           <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b;">Géneros Registrados</h3>
           <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Clasificación temática para los libros del catálogo.</p>
         </div>
-        <button class="btn-primary" id="btnNewGenre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
-          <i class="fa-solid fa-tags"></i> Nuevo Género
+        <button class="btn-primary" id="btnNewGenre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background 0.15s ease;">
+          <i class="fa-solid fa-plus"></i> Nuevo Género
         </button>
       </div>
 
-      <div class="genres-search-bars" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+      <!-- BUSCADOR -->
+      <div class="genres-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
         <input type="text" id="searchGenreName" placeholder="Buscar género por nombre..." 
-               style="flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); outline: none; font-size: 0.875rem;">
+               style="flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); outline: none; font-size: 0.875rem; background: #ffffff;">
       </div>
 
-      <div class="genres-grid" id="genresGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-        <p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando géneros de libro...</p>
+      <!-- CONTENEDOR DE LA TABLA/GRILLA -->
+      <div id="genresTableContainer" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+        <p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando géneros de libro...</p>
       </div>
 
+      <!-- PAGINACIÓN -->
       <div id="genresPagination"></div>
     </section>
 
@@ -166,10 +170,7 @@ function initGenresCarousel() {
 }
 
 function getPageSizeByDevice() {
-  const width = window.innerWidth;
-  if (width < 768) return 6;
-  if (width < 1024) return 8;
-  return 8;
+  return 10;
 }
 
 async function loadAndRenderGenres(query = currentSearchQuery, page = currentPage) {
@@ -177,9 +178,9 @@ async function loadAndRenderGenres(query = currentSearchQuery, page = currentPag
   currentPage = page;
   const pageSize = getPageSizeByDevice();
 
-  const grid = document.getElementById('genresGrid');
-  if (grid) {
-    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando géneros...</p>`;
+  const container = document.getElementById('genresTableContainer');
+  if (container) {
+    container.innerHTML = `<p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando géneros...</p>`;
   }
 
   try {
@@ -197,51 +198,86 @@ async function loadAndRenderGenres(query = currentSearchQuery, page = currentPag
       currentGenres = [];
     }
 
-    renderGenres(currentGenres);
+    renderGenresTable(currentGenres);
     renderPaginationControls(totalPages, currentPage);
   } catch (error) {
     console.error('Error al cargar géneros:', error);
     currentGenres = [];
-    renderGenres([]);
+    renderGenresTable([]);
     renderPaginationControls(0, 0);
   }
 }
 
-function renderGenres(items) {
-  const grid = document.getElementById('genresGrid');
-  if (!grid) return;
+function renderGenresTable(items) {
+  const container = document.getElementById('genresTableContainer');
+  if (!container) return;
 
   if (!items || items.length === 0) {
-    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">No se encontraron géneros de libro registrados.</p>`;
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px;">
+        <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 500;">No se encontraron géneros de libro registrados.</p>
+      </div>
+    `;
     return;
   }
 
-  grid.innerHTML = items.map(item => {
+  const rows = items.map(item => {
     const id = item.id || item.idGeneroLibro || item.genreId;
-    const nombre = item.nombre || item.name || 'Sin nombre';
-    const descripcion = item.descripcion || item.description || 'Sin descripción asignada.';
+    const rawNombre = item.nombre || item.name || 'Sin nombre';
+    const nombre = rawNombre.trim();
+    const rawDesc = item.descripcion || item.description || '';
+    const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción asignada.';
+    const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
     return `
-      <div class="genre-card" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="font-size: 0.75rem; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 4px 10px; border-radius: 20px; text-transform: uppercase;">
-              ${nombre}
-            </span>
-            <div style="display: flex; gap: 4px;">
-              <button class="icon-btn btn-genre-details" data-id="${id}" title="Ver Auditoría" style="background: none; border: none; cursor: pointer; color: #2563eb; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-eye"></i></button>
-              <button class="icon-btn btn-genre-edit" data-id="${id}" title="Editar" style="background: none; border: none; cursor: pointer; color: #475569; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-pen"></i></button>
-              <button class="icon-btn btn-genre-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="background: none; border: none; cursor: pointer; color: #ef4444; padding: 4px; font-size: 0.9rem;"><i class="fa-solid fa-trash"></i></button>
-            </div>
+      <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <td style="padding: 14px 20px; font-weight: 600; color: #0f172a; text-transform: capitalize; width: 30%;">
+          ${nombre.toLowerCase()}
+        </td>
+        <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 55%;">
+          ${descripcion}
+        </td>
+        <td style="padding: 14px 20px; text-align: right; width: 15%;">
+          <div style="display: inline-flex; gap: 4px; align-items: center;">
+            <button class="icon-btn btn-genre-details" data-id="${id}" title="Ver Auditoría" style="
+              background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
+            " onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+
+            <button class="icon-btn btn-genre-edit" data-id="${id}" title="Editar" style="
+              background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
+            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+
+            <button class="icon-btn btn-genre-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+              background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #ef4444; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
+            " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-trash"></i>
+            </button>
           </div>
-          <h4 style="margin: 0 0 6px 0; font-size: 1rem; font-weight: 600; color: #1e293b;">ID #${id}</h4>
-          <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" title="${descripcion}">
-            ${descripcion}
-          </p>
-        </div>
-      </div>
+        </td>
+      </tr>
     `;
   }).join('');
+
+  container.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+            <th style="padding: 12px 20px;">Nombre del Género</th>
+            <th style="padding: 12px 20px;">Descripción</th>
+            <th style="padding: 12px 20px; text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
 
   document.querySelectorAll('.btn-genre-details').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -446,7 +482,7 @@ function openGenreCreateModal() {
 
   body.innerHTML = `
     <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
-      <div style="width: 44px; height: 44px; border-radius: 12px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+      <div style="width: 44px; height: 44px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
         <i class="fa-solid fa-tags"></i>
       </div>
       <div>
@@ -545,7 +581,7 @@ function renderPaginationControls(total, page) {
   }
 
   container.innerHTML = `
-    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
       <button id="btnGenrePrev" ${isFirst ? 'disabled' : ''} 
               style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isFirst ? 'not-allowed' : 'pointer'}; font-size: 0.85rem; color: #475569; opacity: ${isFirst ? '0.4' : '1'};">
         <i class="fa-solid fa-chevron-left"></i> Anterior

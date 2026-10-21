@@ -857,4 +857,61 @@ p {
   .app-layout { flex-direction: column; }
   .sidebar { width: 100%; height: auto; position: relative; }
   .carousel-slide { padding: 24px; }
+}/* ==========================================================================
+   ESTILOS FORZADOS PARA BOTONES DE TARJETAS (CATÁLOGO Y FAVORITOS)
+   ========================================================================== */
+
+/* Botón Secundario: Detalle */
+#admin-content-container .card-actions button:first-child,
+#admin-content-container .libro-card button:first-of-type,
+#admin-content-container .author-card button:first-of-type:not(.btn-favorite) {
+  flex: 1 !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+
+#admin-content-container .card-actions button:first-child:hover,
+#admin-content-container .libro-card button:first-of-type:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* Botón Principal: Préstamo (Azul) */
+#admin-content-container .card-actions button:last-child,
+#admin-content-container .libro-card button:last-of-type,
+#admin-content-container .author-card button:last-of-type:not(.btn-favorite) {
+  flex: 1 !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
+}
+
+#admin-content-container .card-actions button:last-child:hover,
+#admin-content-container .libro-card button:last-of-type:hover {
+  background-color: #1d4ed8 !important;
+  transform: translateY(-1px) !important;
 }

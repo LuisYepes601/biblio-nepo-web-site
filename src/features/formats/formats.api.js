@@ -3,16 +3,21 @@ import { API_CONFIG } from '../../core/config/api.config.js';
 const FORMATS_ADMIN_ENDPOINT = API_CONFIG.ENDPOINTS?.FORMATS_ADMIN || '/api/v1/formato-libros/admin';
 
 /**
- * Obtiene la lista paginada de formatos de libros.
+ * Obtiene la lista paginada de formatos de libros activos (isDelete = false).
  */
 export async function fetchFormats(page = 0, size = 10, search = '') {
-const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
+  const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');
   }
 
   try {
-    const params = new URLSearchParams({ page, size, nombre: search });
+    const params = new URLSearchParams({ 
+      page, 
+      size, 
+      nombre: search,
+      isDelete: false 
+    });
     const response = await fetch(`${API_CONFIG.BASE_URL}${FORMATS_ADMIN_ENDPOINT}?${params.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -93,7 +98,6 @@ export async function updateFormat(id, data) {
  * Elimina un formato por su ID.
  */
 export async function deleteFormat(id) {
-
   const token = localStorage.getItem('authToken')?.replace(/^["']|["']$/g, '');
   if (!token) {
     throw new Error('No se encontró el token de autenticación.');

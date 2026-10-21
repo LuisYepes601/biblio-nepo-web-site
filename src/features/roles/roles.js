@@ -26,7 +26,7 @@ export async function loadRolesView() {
         </button>
       </div>
 
-      <!-- CARRUSEL HERO AUTOMÁTICO CON FLEX 100% -->
+      <!-- CARRUSEL HERO AUTOMÁTICO -->
       <div class="carousel-hero-container" id="rolesHeroCarousel" style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 28px; border: 1px solid #e2e8f0; background: #0f172a;">
         <div class="carousel-track" id="rolesCarouselTrack" style="display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 100%;">
           
@@ -64,21 +64,22 @@ export async function loadRolesView() {
       <section class="roles-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
         <div class="roles-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Listado de Roles</h3>
-            <p style="margin: 2px 0 0 0; font-size: 0.825rem; color: #64748b;">Definición de roles asignables en la plataforma.</p>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Listado de Roles</h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Definición de roles asignables en la plataforma.</p>
           </div>
-          <button class="btn-primary" id="btnNewRole" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          <button class="btn-primary" id="btnNewRole" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> Nuevo Rol
           </button>
         </div>
 
         <div class="roles-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
           <input type="text" id="searchRoleName" placeholder="Buscar rol por nombre..." 
-                 style="flex: 1; min-width: 220px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; color: #0f172a; background: #ffffff;">
+                 style="flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.875rem; color: #0f172a; background: #ffffff;">
         </div>
 
-        <div class="roles-grid" id="rolesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
-          <p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando roles...</p>
+        <!-- TABLA / GRILLA DE DATOS -->
+        <div id="rolesTableContainer" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+          <p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando roles...</p>
         </div>
 
         <div id="rolesPagination"></div>
@@ -195,10 +196,7 @@ function initRolesCarousel() {
 }
 
 function getPageSizeByDevice() {
-  const width = window.innerWidth;
-  if (width < 768) return 6;
-  if (width < 1024) return 8;
-  return 8;
+  return 10;
 }
 
 async function loadAndRenderRoles(query = currentSearchQuery, page = currentPage) {
@@ -206,9 +204,9 @@ async function loadAndRenderRoles(query = currentSearchQuery, page = currentPage
   currentPage = page;
   const pageSize = getPageSizeByDevice();
 
-  const grid = document.getElementById('rolesGrid');
-  if (grid) {
-    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">Cargando roles...</p>`;
+  const container = document.getElementById('rolesTableContainer');
+  if (container) {
+    container.innerHTML = `<p style="text-align: center; color: #64748b; padding: 30px; margin: 0; font-size: 0.9rem;">Cargando roles...</p>`;
   }
 
   try {
@@ -226,29 +224,37 @@ async function loadAndRenderRoles(query = currentSearchQuery, page = currentPage
       currentRoles = [];
     }
 
-    renderRoles(currentRoles);
+    renderRolesTable(currentRoles);
     renderPaginationControls(totalPages, currentPage);
   } catch (error) {
     console.error('Error al cargar la lista de roles:', error);
     currentRoles = [];
-    renderRoles([]);
+    renderRolesTable([]);
     renderPaginationControls(0, 0);
   }
 }
 
-function renderRoles(roles) {
-  const grid = document.getElementById('rolesGrid');
-  if (!grid) return;
+/* RENDERIZADO EN TABLA/GRILLA MINIMALISTA SIN MOSTRAR IDS */
+function renderRolesTable(roles) {
+  const container = document.getElementById('rolesTableContainer');
+  if (!container) return;
 
   if (!roles || roles.length === 0) {
-    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px;">No se encontraron roles registrados.</p>`;
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px;">
+        <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 500;">No se encontraron roles registrados.</p>
+      </div>
+    `;
     return;
   }
 
-  grid.innerHTML = roles.map(role => {
+  const rows = roles.map(role => {
     const id = role.id || role.idRol || role.roleId;
-    const nombre = role.nombre || role.name || role.nombreRol || 'ROLE_USER';
-    const descripcion = role.descripcion || role.description || 'Sin descripción asignada.';
+    const rawNombre = role.nombre || role.name || role.nombreRol || 'ROLE_USER';
+    const nombre = rawNombre.trim();
+    const rawDesc = role.descripcion || role.description || '';
+    const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción asignada.';
+    const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
     let badgeBg = '#e0e7ff';
     let badgeColor = '#4f46e5';
@@ -261,26 +267,89 @@ function renderRoles(roles) {
     }
 
     return `
-      <div class="role-card" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="font-size: 0.725rem; font-weight: 700; color: ${badgeColor}; background: ${badgeBg}; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">
-              ${nombre}
-            </span>
-            <div style="display: flex; gap: 4px;">
-              <button class="icon-btn btn-role-details" data-id="${id}" title="Ver Auditoría" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #6366f1; padding: 5px 8px; font-size: 0.8rem;"><i class="fa-solid fa-eye"></i></button>
-              <button class="icon-btn btn-role-edit" data-id="${id}" title="Editar" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #475569; padding: 5px 8px; font-size: 0.8rem;"><i class="fa-solid fa-pen"></i></button>
-              <button class="icon-btn btn-role-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; color: #ef4444; padding: 5px 8px; font-size: 0.8rem;"><i class="fa-solid fa-trash"></i></button>
-            </div>
+      <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <td style="padding: 14px 20px; font-weight: 600; width: 35%;">
+          <span style="font-size: 0.725rem; font-weight: 700; color: ${badgeColor}; background: ${badgeBg}; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">
+            ${nombre}
+          </span>
+        </td>
+        <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 50%;">
+          ${descripcion}
+        </td>
+        <td style="padding: 14px 20px; text-align: right; width: 15%;">
+          <div style="display: inline-flex; gap: 4px; align-items: center;">
+            <button class="icon-btn btn-role-details" data-id="${id}" title="Ver Auditoría" style="
+              background: transparent; 
+              border: 1px solid #e2e8f0; 
+              width: 30px; 
+              height: 30px; 
+              border-radius: 6px; 
+              cursor: pointer; 
+              color: #6366f1; 
+              display: inline-flex; 
+              align-items: center; 
+              justify-content: center; 
+              font-size: 0.8rem; 
+              transition: background 0.15s ease;
+            " onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+
+            <button class="icon-btn btn-role-edit" data-id="${id}" title="Editar" style="
+              background: transparent; 
+              border: 1px solid #e2e8f0; 
+              width: 30px; 
+              height: 30px; 
+              border-radius: 6px; 
+              cursor: pointer; 
+              color: #475569; 
+              display: inline-flex; 
+              align-items: center; 
+              justify-content: center; 
+              font-size: 0.8rem; 
+              transition: background 0.15s ease;
+            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+
+            <button class="icon-btn btn-role-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+              background: transparent; 
+              border: 1px solid #e2e8f0; 
+              width: 30px; 
+              height: 30px; 
+              border-radius: 6px; 
+              cursor: pointer; 
+              color: #ef4444; 
+              display: inline-flex; 
+              align-items: center; 
+              justify-content: center; 
+              font-size: 0.8rem; 
+              transition: background 0.15s ease;
+            " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-trash"></i>
+            </button>
           </div>
-          <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">ID #${id}</h4>
-          <p style="margin: 0; font-size: 0.825rem; color: #64748b; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" title="${descripcion}">
-            ${descripcion}
-          </p>
-        </div>
-      </div>
+        </td>
+      </tr>
     `;
   }).join('');
+
+  container.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+            <th style="padding: 12px 20px;">Rol</th>
+            <th style="padding: 12px 20px;">Descripción</th>
+            <th style="padding: 12px 20px; text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
 
   document.querySelectorAll('.btn-role-details').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -331,16 +400,10 @@ async function openRoleDetailsModal(id) {
       return;
     }
 
-    const createBy = role.createBy || 'N/A';
     const creatorName = role.creatorName || 'N/A';
-
-    const updateBy = role.updateBy || 'N/A';
     const updateName = role.updateName || 'N/A';
-
-    const deleteBy = role.deleteBy || 'N/A';
     const deleteName = role.deleteName || 'N/A';
     const deleteAt = role.deleteAt ? new Date(role.deleteAt).toLocaleString() : 'N/A';
-
     const isDelete = role.isDelete ?? false;
 
     body.innerHTML = `
@@ -355,22 +418,11 @@ async function openRoleDetailsModal(id) {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Creador ID</span>
-            <span style="color: #0f172a; font-weight: 600;">${createBy}</span>
-          </div>
-          <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Nombre Creador</span>
+            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Creado por</span>
             <span style="color: #0f172a; font-weight: 600;">${creatorName}</span>
           </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Modificador ID</span>
-            <span style="color: #0f172a; font-weight: 600;">${updateBy}</span>
-          </div>
-          <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Nombre Modificador</span>
+            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Modificado por</span>
             <span style="color: #0f172a; font-weight: 600;">${updateName}</span>
           </div>
         </div>
@@ -378,7 +430,7 @@ async function openRoleDetailsModal(id) {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
             <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Eliminado por</span>
-            <span style="color: #0f172a; font-weight: 600;">${deleteName} (${deleteBy})</span>
+            <span style="color: #0f172a; font-weight: 600;">${deleteName}</span>
           </div>
           <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
             <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px;">Fecha Eliminación</span>
@@ -568,16 +620,16 @@ function renderPaginationControls(total, page) {
   }
 
   container.innerHTML = `
-    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
       <button id="btnRolePrev" ${isFirst ? 'disabled' : ''} 
-              style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isFirst ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; color: #475569; opacity: ${isFirst ? '0.4' : '1'};">
+              style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isFirst ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; color: #475569; opacity: ${isFirst ? '0.4' : '1'}; font-weight: 500;">
         <i class="fa-solid fa-chevron-left"></i> Anterior
       </button>
 
       <div style="display: flex; gap: 4px; align-items: center;">${pageBtns}</div>
 
       <button id="btnRoleNext" ${isLast ? 'disabled' : ''} 
-              style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isLast ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; color: #475569; opacity: ${isLast ? '0.4' : '1'};">
+              style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: ${isLast ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; color: #475569; opacity: ${isLast ? '0.4' : '1'}; font-weight: 500;">
         Siguiente <i class="fa-solid fa-chevron-right"></i>
       </button>
     </div>

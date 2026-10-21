@@ -7,6 +7,16 @@ import { loadBookGenresView } from '../book-genres/book-genres.js';
 import { loadRolesView } from '../roles/roles.js';
 import { loadFormatsView } from '../formats/formats.js';
 import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
+import { loadFavoritesView } from '../favoritos/favorites.component.js'; // <-- Importación agregada
+
+/**
+ * Función centralizada para limpiar la sesión y redirigir al index.html
+ */
+export function logoutUser() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('userId');
+  window.location.href = 'index.html';
+}
 
 export function navigateToView(view) {
   const container = document.getElementById('admin-sidebar-container');
@@ -27,6 +37,8 @@ export function navigateToView(view) {
     switchView('dashboard'); 
   } else if (view === 'catalog') {
     loadBooksView();
+  } else if (view === 'favorites') { // <-- Ruta para cargar favoritos en el panel de admin
+    loadFavoritesView('#admin-content-container');
   } else if (view === 'categories') {
     loadCategoriesView();
   } else if (view === 'genres') {
@@ -52,11 +64,11 @@ export function initAdminNavigation() {
     <aside class="sidebar">
       <div class="sidebar-top">
 
-<!-- LOGO Y MARCA -->
-<div class="brand-box">
-  <img src="https://res.cloudinary.com/divhisdcx/image/upload/v1787950293/logo_biblionepo_circular_transparente_ts0glk.svg" alt="BiblioNepo Logo" class="brand-logo-img">
-  <span class="brand-name">BiblioNepo</span>
-</div>
+        <!-- LOGO Y MARCA -->
+        <div class="brand-box">
+          <img src="https://res.cloudinary.com/divhisdcx/image/upload/v1787950293/logo_biblionepo_circular_transparente_ts0glk.svg" alt="BiblioNepo Logo" class="brand-logo-img">
+          <span class="brand-name">BiblioNepo</span>
+        </div>
 
         <!-- TARJETA DE PERFIL INTERACTIVA -->
         <div class="user-profile-card" id="btnProfileView" title="Ver mi perfil">
@@ -76,6 +88,7 @@ export function initAdminNavigation() {
             <ul class="nav-list">
               <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></a></li>
               <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book"></i> <span>Catálogo Libros</span></a></li>
+              <li><a href="#favoritos" data-view="favorites"><i class="fa-solid fa-heart"></i> <span>Mis Favoritos</span></a></li>
               <li><a href="#prestamos" data-view="loans"><i class="fa-solid fa-bookmark"></i> <span>Préstamos Activos</span></a></li>
             </ul>
           </div>
@@ -103,17 +116,21 @@ export function initAdminNavigation() {
         </nav>
       </div>
 
-      <!-- BOTÓN SITIO PÚBLICO FOOTER -->
-      <div class="sidebar-footer">
+      <!-- BOTONES SITIO PÚBLICO Y CERRAR SESIÓN -->
+      <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
         <button class="btn-public-site" id="btnGoToPublic">
           <i class="fa-solid fa-arrow-up-right-from-square"></i>
           <span>Sitio Público</span>
+        </button>
+        <button class="btn-public-site" id="btnLogout" style="background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; width: 100%; cursor: pointer;">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Cerrar Sesión</span>
         </button>
       </div>
     </aside>
   `;
 
-  // Botón para ir al sitio público
+  // Botón Sitio Público
   const btnGoToPublic = container.querySelector('#btnGoToPublic');
   if (btnGoToPublic) {
     btnGoToPublic.addEventListener('click', () => {
@@ -121,7 +138,7 @@ export function initAdminNavigation() {
     });
   }
 
-  // Evento para hacer clic en la tarjeta de perfil
+  // Tarjeta de perfil
   const btnProfileView = container.querySelector('#btnProfileView');
   if (btnProfileView) {
     btnProfileView.addEventListener('click', () => {
@@ -131,7 +148,7 @@ export function initAdminNavigation() {
     });
   }
 
-  // Navegación del menú lateral principal
+  // Navegación menú lateral
   const navItems = container.querySelectorAll('.sidebar-nav li');
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
@@ -144,3 +161,25 @@ export function initAdminNavigation() {
     });
   });
 }
+
+// CAPTURA GLOBAL DE CUALQUIER BOTÓN DE SALIDA
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button, a, div[role="button"]');
+  if (!btn) return;
+
+  const titleAttr = (btn.getAttribute('title') || '').toLowerCase();
+  const isLogoutBtn = 
+    btn.id === 'btnLogout' ||
+    btn.id === 'btnLogoutHeader' ||
+    btn.id === 'btn-logout-header' ||
+    btn.id === 'btn-logout-profile' ||
+    btn.classList.contains('btn-logout') ||
+    btn.querySelector('.fa-power-off, .fa-right-from-bracket, .fa-arrow-right-from-bracket') !== null ||
+    titleAttr.includes('cerrar') ||
+    titleAttr.includes('salir');
+
+  if (isLogoutBtn) {
+    e.preventDefault();
+    logoutUser();
+  }
+});

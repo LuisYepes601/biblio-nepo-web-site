@@ -1,7 +1,104 @@
-import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles,fetchCategoriasPorLibro } from './catalog.api.js';
+import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles, fetchCategoriasPorLibro } from './catalog.api.js';
 import { getStateMessageHTML } from '../../core/components/state-message.js';
+import { addFavoriteApi, removeFavoriteApi } from '../favoritos/favorite-api.js';
 
 const PALETTE = ['#6E2A2A', '#1C2536', '#9A6A34', '#3B5B45', '#4A3B6B', '#7A4A2A', '#2E4A5E', '#5C2E4A'];
+
+/**
+ * Efecto visual de Corazón Flotante y Resplandor en la tarjeta
+ */
+function triggerFavoriteVisualFeedback(btn, isAdding) {
+  const card = btn.closest('.book-card');
+  const rect = btn.getBoundingClientRect();
+
+  // 1. Crear el corazón flotante animado en la posición exacta del botón
+  const floatingHeart = document.createElement('div');
+  floatingHeart.innerHTML = isAdding ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-heart-crack"></i>';
+  floatingHeart.style.cssText = `
+    position: fixed;
+    left: ${rect.left + rect.width / 2 - 12}px;
+    top: ${rect.top - 8}px;
+    font-size: 1.5rem;
+    color: ${isAdding ? '#ef4444' : '#64748b'};
+    pointer-events: none;
+    z-index: 99999;
+    transform: scale(0.6);
+    opacity: 1;
+    transition: all 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  `;
+  document.body.appendChild(floatingHeart);
+
+  // Iniciar la animación ascendente y desvanecimiento
+  requestAnimationFrame(() => {
+    floatingHeart.style.transform = 'translateY(-50px) scale(1.7)';
+    floatingHeart.style.opacity = '0';
+  });
+
+  setTimeout(() => {
+    floatingHeart.remove();
+  }, 780);
+
+  // 2. Resplandor / Destello temporal en la tarjeta completa
+  if (card) {
+    const originalShadow = card.style.boxShadow;
+    const originalTransform = card.style.transform;
+
+    card.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    card.style.boxShadow = isAdding 
+      ? '0 0 25px rgba(239, 68, 68, 0.45)' 
+      : '0 0 18px rgba(100, 116, 139, 0.3)';
+    card.style.transform = 'scale(1.025)';
+
+    setTimeout(() => {
+      card.style.boxShadow = originalShadow || '';
+      card.style.transform = originalTransform || '';
+    }, 450);
+  }
+}
+
+/**
+ * Notificación Toast flotante para dar feedback inmediato al usuario
+ */
+function showToast(message, type = 'success') {
+  let toast = document.getElementById('catalog-toast-notification');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'catalog-toast-notification';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      background: #0f172a;
+      color: #ffffff;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      z-index: 99999;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    document.body.appendChild(toast);
+  }
+
+  const icon = type === 'success' 
+    ? '<i class="fa-solid fa-heart" style="color: #f87171;"></i>' 
+    : '<i class="fa-solid fa-heart-crack" style="color: #94a3b8;"></i>';
+
+  toast.innerHTML = `${icon} <span>${message}</span>`;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(20px)';
+  }, 2800);
+}
 
 function getPageSizeByDevice() {
   const width = window.innerWidth;
@@ -30,8 +127,8 @@ function bookCardHTML(b, i) {
 
   return `
     <div class="book-card" data-book='${rawData}'>
-      <button class="btn-favorite" data-id="${b.id || ''}" aria-label="Agregar a favoritos">
-        <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+      <button class="btn-favorite" data-id="${b.id || ''}" aria-label="Agregar a favoritos" style="transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="transition: all 0.2s ease;">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
       </button>
@@ -404,19 +501,68 @@ export function initCatalog() {
     renderBooks();
   });
 
+  // Escuchador dinámico de interacción con favoritos con feedback animado Y ESTADO DE CARGA VISIBLE
   bookGrid.addEventListener('click', async (e) => {
     const favoriteBtn = e.target.closest('.btn-favorite');
     if (favoriteBtn) {
       e.stopPropagation();
       const bookId = favoriteBtn.getAttribute('data-id');
-      
-      favoriteBtn.classList.toggle('is-favorite');
+      if (!bookId || favoriteBtn.disabled) return;
+
       const esFavorito = favoriteBtn.classList.contains('is-favorite');
-      
-      if (esFavorito) {
-        console.log(`Libro ${bookId} agregado a favoritos`);
-      } else {
-        console.log(`Libro ${bookId} eliminado de favoritos`);
+      const originalHTML = favoriteBtn.innerHTML;
+
+      // 1. ESTADO DE CARGA VISIBLE INMEDIATO (Spinner animado)
+      favoriteBtn.disabled = true;
+      favoriteBtn.style.opacity = '0.85';
+      favoriteBtn.style.transform = 'scale(0.95)';
+      favoriteBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="font-size: 0.85rem; color: #2563eb;"></i>`;
+
+      try {
+        if (!esFavorito) {
+          await addFavoriteApi(bookId);
+
+          // 2. ÉXITO AL GUARDAR: Corazón rojo relleno
+          favoriteBtn.classList.add('is-favorite');
+          favoriteBtn.style.color = '#dc2626';
+          favoriteBtn.style.opacity = '1';
+          favoriteBtn.style.transform = 'scale(1)';
+          favoriteBtn.innerHTML = `
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="#dc2626" stroke-width="2" fill="#dc2626" style="transition: all 0.2s ease;">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          `;
+
+          // Disparar destello en tarjeta, corazón flotante y notificación
+          triggerFavoriteVisualFeedback(favoriteBtn, true);
+          showToast('¡Guardado en tus Favoritos!', 'success');
+
+        } else {
+          await removeFavoriteApi(bookId);
+
+          // 2. ÉXITO AL ELIMINAR: Corazón con contorno vacío
+          favoriteBtn.classList.remove('is-favorite');
+          favoriteBtn.style.color = 'currentColor';
+          favoriteBtn.style.opacity = '1';
+          favoriteBtn.style.transform = 'scale(1)';
+          favoriteBtn.innerHTML = `
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="transition: all 0.2s ease;">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          `;
+
+          triggerFavoriteVisualFeedback(favoriteBtn, false);
+          showToast('Eliminado de tus favoritos', 'danger');
+        }
+
+      } catch (err) {
+        console.error('Error al actualizar favorito:', err);
+        favoriteBtn.style.opacity = '1';
+        favoriteBtn.style.transform = 'scale(1)';
+        favoriteBtn.innerHTML = originalHTML;
+        showToast('No se pudo conectar con el servidor', 'danger');
+      } finally {
+        favoriteBtn.disabled = false;
       }
       return;
     }
@@ -445,383 +591,384 @@ export function initCatalog() {
       console.error('Error al leer los datos del libro:', err);
     }
   });
-function openBookModal(book) {
-    let modal = document.getElementById('bookModal');
-
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'bookModal';
-      modal.className = 'book-modal-overlay';
-      modal.style.display = 'none';
-      modal.innerHTML = `
-        <div class="book-modal-content" style="max-width: 1100px; width: 95%; max-height: 95vh; display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); position: relative;">
-          <button id="closeModal" class="modal-close-btn" style="position: absolute; right: 20px; top: 15px; background: none; border: none; font-size: 1.8rem; cursor: pointer; z-index: 20; color: #4b5563;">&times;</button>
-          <div id="modalBody" style="overflow-y: auto; flex: 1; padding: 24px; position: relative;"></div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-
-      modal.querySelector('#closeModal').addEventListener('click', () => {
-        modal.style.display = 'none';
-      });
-      modal.addEventListener('click', (ev) => {
-        if (ev.target === modal) modal.style.display = 'none';
-      });
-    }
-
-    const modalBody = modal.querySelector('#modalBody');
-    const titulo = book.titulo || 'Sin título';
-    const subtitulo = book.subtitulo ? `<h3>${book.subtitulo}</h3>` : '';
-    const autor = book.autor || book.nombre_autor || 'Autor no especificado';
-    const editorial = book.editorial || 'Sin editorial';
-    const anio = book.fechaPublicacion ? new Date(book.fechaPublicacion).getFullYear() : 'No especificado';
-    const formato = book.formatoLibro || 'Digital';
-    const descripcion = book.descripcion || 'No hay una descripción detallada disponible para este libro.';
-    const idioma = book.idioma ? `<p class="modal-idioma" style="margin: 6px 0; color: #4b5563;"><strong>Idioma:</strong> ${book.idioma}</p>` : '';
-    const pais = book.paisPublicacion ? `<p class="modal-pais" style="margin: 6px 0; color: #4b5563;"><strong>País de publicación:</strong> ${book.paisPublicacion}</p>` : '';
-
-    const portadaImgUrl = book.portadaUrl;
-    const portada = portadaImgUrl 
-      ? `<img src="${portadaImgUrl}" alt="${titulo}" class="modal-cover" style="width: 100%; max-height: 320px; object-fit: cover; border-radius: 8px;">` 
-      : `<div class="modal-cover-fallback" style="width: 100%; height: 250px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; border-radius: 8px;"><span>Sin portada</span></div>`;
-
-    const archivoFinalUrl = book.archivoUrl || book.url || book.archivo || book.fileUrl || book.enlace;
-
-    let visualizadorHTML = '';
-    if (archivoFinalUrl) {
-      const urlLower = archivoFinalUrl.toLowerCase();
-      const esImagen = /\.(jpeg|jpg|png|gif|webp)$/.test(urlLower);
-      const esPdf = /\.pdf$/.test(urlLower);
-      const esEpub = /\.epub$/.test(urlLower);
-      
-      if (esImagen) {
-        visualizadorHTML = `
-          <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
-            <strong style="display: block; margin-bottom: 10px;">Visualizador de Imagen:</strong>
-            <div style="text-align: center; background: #f9fafb; border-radius: 8px; padding: 10px;">
-              <img src="${archivoFinalUrl}" alt="Archivo visualizable" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 6px;">
-            </div>
-          </div>
-        `;
-      } else if (esPdf) {
-        visualizadorHTML = `
-          <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <strong>Lector Digital:</strong>
-              <button id="btnFullscreenReader" style="background: var(--primary, #2563eb); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">Pantalla completa</button>
-            </div>
-            
-            <div id="readerContainer" style="width: 100%; height: 500px; background: #2d3748; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--line, #e5e7eb); position: relative;">
-              <div style="background: rgba(15, 23, 42, 0.9); padding: 10px 15px; display: flex; justify-content: center; gap: 15px; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10;">
-                <button id="btnPrevPage" style="background: #4a5568; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">◀ Anterior</button>
-                <span id="pageInfo" style="font-size: 0.85rem; color: #e2e8f0;">Página <span id="pageNum">1</span> de <span id="pageCount">--</span></span>
-                <button id="btnNextPage" style="background: #4a5568; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Siguiente ▶</button>
-              </div>
-              <div style="flex: 1; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 15px;">
-                <canvas id="pdfCanvas" style="box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 100%; background: white;"></canvas>
-              </div>
-            </div>
-          </div>
-        `;
-      } else if (esEpub) {
-        visualizadorHTML = `
-          <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
-            <strong>Libro Digital (EPUB):</strong>
-            <div style="margin-top: 10px; padding: 15px; background: #f9fafb; border-radius: 8px; text-align: center;">
-              <p style="color: var(--muted, #666); margin-bottom: 5px; font-size: 0.9rem;">Este formato está protegido para lectura exclusiva en línea.</p>
-            </div>
-          </div>
-        `;
-      } else {
-        visualizadorHTML = `
-          <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px; text-align: center;">
-            <p style="color: var(--muted, #888); font-size: 0.85rem; font-style: italic;">Visualización restringida.</p>
-          </div>
-        `;
-      }
-    } else {
-      visualizadorHTML = `
-        <div style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px; text-align: center;">
-          <p style="color: var(--muted, #888); font-size: 0.85rem; font-style: italic;">Este libro no tiene un archivo digital disponible.</p>
-        </div>
-      `;
-    }
-
-    modalBody.innerHTML = `
-      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start;">
-        <div>
-          ${portada}
-          <div style="margin-top: 10px; text-align: center;">
-            <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${formato}</span>
-          </div>
-        </div>
-        <div>
-          <h2 style="font-size: 1.5rem; margin-bottom: 8px; color: #111827;">${titulo}</h2>
-          ${subtitulo}
-          <p style="margin: 6px 0; color: #4b5563;"><strong>Autor:</strong> ${autor}</p>
-          <p style="margin: 6px 0; color: #4b5563;"><strong>Editorial:</strong> ${editorial} (${anio})</p>
-          ${idioma}
-          ${pais}
-
-          <div id="modalCategoriesContainer" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-            <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
-              <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
-            </strong>
-            <span style="color: #6b7280; font-size: 0.85rem;">Cargando...</span>
-          </div>
-
-          <div style="margin-top: 14px;">
-            <strong style="color: #111827; display: block; margin-bottom: 4px;">Descripción:</strong>
-            <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">${descripcion}</p>
-          </div>
-        </div>
-      </div>
-      ${visualizadorHTML}
-
-      <div style="margin-top: 32px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
-        <h4 style="font-size: 1.1rem; margin-bottom: 14px; font-family: 'Fraunces', serif; color: #1f2937;">Libros recomendados de este autor</h4>
-        <div id="modalRecommendedGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
-          <p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Buscando recomendaciones...</p>
-        </div>
-      </div>
-    `;
-
-    modal.style.display = 'flex';
-
-    // Carga asíncrona de las categorías asociadas al libro
-    const idLibro = book.id || book.idLibro || book.id_libro;
-    if (idLibro) {
-      fetchCategoriasPorLibro(idLibro).then(categorias => {
-        const container = modal.querySelector('#modalCategoriesContainer');
-        if (!container) return;
-
-        if (!categorias || categorias.length === 0) {
-          container.innerHTML = `
-            <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
-              <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
-            </strong>
-            <span style="color: #9ca3af; font-size: 0.85rem;"><em>Sin categorías asignadas</em></span>
-          `;
-          return;
-        }
-
-        const badges = categorias.map(cat => {
-          const nombre = typeof cat === 'object' 
-            ? (cat.nombre || cat.nombreCategoria || cat.categoria?.nombre || cat.name) 
-            : cat;
-          return `<span style="background: #eeefff; color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${nombre}</span>`;
-        }).join('');
-
-        container.innerHTML = `
-          <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
-            <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
-          </strong>
-          ${badges}
-        `;
-      }).catch(err => {
-        console.error('Error al obtener categorías:', err);
-      });
-    }
-
-    const autorLibro = book.autor || book.nombre_autor;
-    if (autorLibro && idLibro) {
-      loadModalRecommendations(book, idLibro);
-    } else {
-      const recContainer = modal.querySelector('#modalRecommendedGrid');
-      if (recContainer) recContainer.innerHTML = '<p style="color: var(--muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay recomendaciones disponibles para este autor.</p>';
-    }
-
-    const pdfCanvas = modal.querySelector('#pdfCanvas');
-    if (pdfCanvas && archivoFinalUrl) {
-      loadPdfViewerScript(archivoFinalUrl, modal);
-    }
-
-    const btnFullscreen = modal.querySelector('#btnFullscreenReader');
-    const readerContainer = modal.querySelector('#readerContainer');
-    if (btnFullscreen && readerContainer) {
-      btnFullscreen.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          readerContainer.requestFullscreen().catch(err => {
-            console.warn("Error al intentar activar pantalla completa:", err);
-          });
-        } else {
-          document.exitFullscreen();
-        }
-      });
-    }
-}
-
-  async function loadModalRecommendations(bookOrAuthorData, currentBookId) {
-    const container = document.getElementById('modalRecommendedGrid');
-    if (!container) return;
-
-    const autorNombre = typeof bookOrAuthorData === 'object' && bookOrAuthorData !== null
-      ? (bookOrAuthorData.autor || bookOrAuthorData.nombre_autor)
-      : bookOrAuthorData;
-
-    if (!autorNombre) {
-      container.innerHTML = '<p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay autor asociado para mostrar recomendaciones.</p>';
-      return;
-    }
-
-    try {
-      const data = await fetchLibros({ 
-        nombre_autor: autorNombre, 
-        page: 0, 
-        size: 10 
-      });
-
-      const allBooks = Array.isArray(data) ? data : (data.content || []);
-
-      const books = allBooks
-        .filter(b => String(b.id) !== String(currentBookId))
-        .slice(0, 5);
-
-      if (books.length === 0) {
-        container.innerHTML = '<p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay más libros de este autor.</p>';
-        return;
-      }
-
-      const PALETTE = window.PALETTE || ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-      container.innerHTML = books.map((recBook, idx) => {
-        const color = PALETTE[idx % PALETTE.length];
-        const rTitle = recBook.titulo || 'Sin título';
-        const rAuthor = recBook.autor || recBook.nombre_autor || 'Autor desconocido';
-        const rPortada = recBook.portadaUrl;
-
-        const rCoverHTML = rPortada
-          ? `<img src="${rPortada}" alt="${rTitle}" style="width: 100%; height: 110px; object-fit: cover; border-radius: 4px; margin-bottom: 6px;">`
-          : `<div style="width: 100%; height: 110px; background: ${color}; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; text-align: center; padding: 4px; margin-bottom: 6px;">${rTitle}</div>`;
-
-        const rawRecData = JSON.stringify(recBook).replace(/'/g, "&apos;");
-
-        return `
-          <div class="recommended-mini-card" data-book='${rawRecData}' style="cursor: pointer; background: #f9fafb; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 8px; text-align: center; transition: transform 0.2s ease;">
-            ${rCoverHTML}
-            <h5 style="font-size: 0.75rem; font-weight: 600; margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${rTitle}">${rTitle}</h5>
-            <span style="font-size: 0.68rem; color: var(--muted, #6b7280); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rAuthor}</span>
-          </div>
-        `;
-      }).join('');
-
-      container.querySelectorAll('.recommended-mini-card').forEach(card => {
-        card.addEventListener('click', async () => {
-          const recRaw = card.getAttribute('data-book');
-          if (!recRaw) return;
-          try {
-            const basicRec = JSON.parse(recRaw.replace(/&apos;/g, "'"));
-            
-            // Llamada directa corregida sin 'window.' para que abra el modal localmente
-            openBookModal({ ...basicRec, descripcion: 'Cargando detalles adicionales...' });
-            
-            if (basicRec.id) {
-              const details = await fetchLibroDetalles(basicRec.id);
-              openBookModal({ ...basicRec, ...details });
-              loadModalRecommendations(details, basicRec.id);
-            }
-          } catch (e) {
-            console.error('Error al abrir libro recomendado:', e);
-          }
-        });
-      });
-
-    } catch (err) {
-      console.warn('Error al cargar recomendaciones:', err);
-      container.innerHTML = '<p style="color: var(--danger-color, #dc2626); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No se pudieron cargar las recomendaciones.</p>';
-    }
-  }
-
-  function loadPdfViewerScript(pdfUrl, modal) {
-    if (!window.pdfjsLib) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-      script.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        initPdfRenderer(pdfUrl, modal);
-      };
-      document.head.appendChild(script);
-    } else {
-      initPdfRenderer(pdfUrl, modal);
-    }
-  }
-
-  function initPdfRenderer(url, modal) {
-    let pdfDoc = null,
-        pageNum = 1,
-        pageRendering = false,
-        pageNumPending = null,
-        scale = 1.2;
-
-    const canvas = modal.querySelector('#pdfCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    function renderPage(num) {
-      pageRendering = true;
-      pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({ scale: scale });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport
-        };
-        const renderTask = page.render(renderContext);
-
-        renderTask.promise.then(function() {
-          pageRendering = false;
-          if (pageNumPending !== null) {
-            renderPage(pageNumPending);
-            pageNumPending = null;
-          }
-        });
-      });
-
-      const pageNumEl = modal.querySelector('#pageNum');
-      if (pageNumEl) pageNumEl.textContent = num;
-    }
-
-    function queueRenderPage(num) {
-      if (pageRendering) {
-        pageNumPending = num;
-      } else {
-        renderPage(num);
-      }
-    }
-
-    function onPrevPage() {
-      if (pageNum <= 1) return;
-      pageNum--;
-      queueRenderPage(pageNum);
-    }
-
-    function onNextPage() {
-      if (pageNum >= pdfDoc.numPages) return;
-      pageNum++;
-      queueRenderPage(pageNum);
-    }
-
-    const btnPrev = modal.querySelector('#btnPrevPage');
-    const btnNext = modal.querySelector('#btnNextPage');
-    if (btnPrev) btnPrev.addEventListener('click', onPrevPage);
-    if (btnNext) btnNext.addEventListener('click', onNextPage);
-
-    window.pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
-      pdfDoc = pdfDoc_;
-      const pageCountEl = modal.querySelector('#pageCount');
-      if (pageCountEl) pageCountEl.textContent = pdfDoc.numPages;
-      renderPage(pageNum);
-    }).catch(err => {
-      console.error("Error al cargar el archivo PDF con PDF.js:", err);
-      const readerContainer = modal.querySelector('#readerContainer');
-      if (readerContainer) {
-        readerContainer.innerHTML = '<p style="color: white; padding: 20px; text-align: center;">No se pudo cargar el documento PDF.</p>';
-      }
-    });
-  }
 
   loadInitialData();
 }
 
+/**
+ * Muestra el modal con la información completa del libro.
+ */
+export function openBookModal(book) {
+  let modal = document.getElementById('bookModal');
+
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'bookModal';
+    modal.className = 'book-modal-overlay';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+      <div class="book-modal-content" style="max-width: 1100px; width: 95%; max-height: 95vh; display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); position: relative;">
+        <button id="closeModal" class="modal-close-btn" style="position: absolute; right: 20px; top: 15px; background: none; border: none; font-size: 1.8rem; cursor: pointer; z-index: 20; color: #4b5563;">&times;</button>
+        <div id="modalBody" style="overflow-y: auto; flex: 1; padding: 24px; position: relative;"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#closeModal').addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+    modal.addEventListener('click', (ev) => {
+      if (ev.target === modal) modal.style.display = 'none';
+    });
+  }
+
+  const modalBody = modal.querySelector('#modalBody');
+  const titulo = book.titulo || 'Sin título';
+  const subtitulo = book.subtitulo ? `<h3>${book.subtitulo}</h3>` : '';
+  const autor = book.autor || book.nombre_autor || 'Autor no especificado';
+  const editorial = book.editorial || 'Sin editorial';
+  const anio = book.fechaPublicacion ? new Date(book.fechaPublicacion).getFullYear() : 'No especificado';
+  const formato = book.formatoLibro || 'Digital';
+  const descripcion = book.descripcion || 'No hay una descripción detallada disponible para este libro.';
+  const idioma = book.idioma ? `<p class="modal-idioma" style="margin: 6px 0; color: #4b5563;"><strong>Idioma:</strong> ${book.idioma}</p>` : '';
+  const pais = book.paisPublicacion ? `<p class="modal-pais" style="margin: 6px 0; color: #4b5563;"><strong>País de publicación:</strong> ${book.paisPublicacion}</p>` : '';
+
+  const portadaImgUrl = book.portadaUrl;
+  const portada = portadaImgUrl 
+    ? `<img src="${portadaImgUrl}" alt="${titulo}" class="modal-cover" style="width: 100%; max-height: 320px; object-fit: cover; border-radius: 8px;">` 
+    : `<div class="modal-cover-fallback" style="width: 100%; height: 250px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; border-radius: 8px;"><span>Sin portada</span></div>`;
+
+  const archivoFinalUrl = book.archivoUrl || book.url || book.archivo || book.fileUrl || book.enlace;
+
+  let visualizadorHTML = '';
+  if (archivoFinalUrl) {
+    const urlLower = archivoFinalUrl.toLowerCase();
+    const esImagen = /\.(jpeg|jpg|png|gif|webp)$/.test(urlLower);
+    const esPdf = /\.pdf$/.test(urlLower);
+    const esEpub = /\.epub$/.test(urlLower);
+    
+    if (esImagen) {
+      visualizadorHTML = `
+        <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
+          <strong style="display: block; margin-bottom: 10px;">Visualizador de Imagen:</strong>
+          <div style="text-align: center; background: #f9fafb; border-radius: 8px; padding: 10px;">
+            <img src="${archivoFinalUrl}" alt="Archivo visualizable" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 6px;">
+          </div>
+        </div>
+      `;
+    } else if (esPdf) {
+      visualizadorHTML = `
+        <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>Lector Digital:</strong>
+            <button id="btnFullscreenReader" style="background: var(--primary, #2563eb); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">Pantalla completa</button>
+          </div>
+          
+          <div id="readerContainer" style="width: 100%; height: 500px; background: #2d3748; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--line, #e5e7eb); position: relative;">
+            <div style="background: rgba(15, 23, 42, 0.9); padding: 10px 15px; display: flex; justify-content: center; gap: 15px; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10;">
+              <button id="btnPrevPage" style="background: #4a5568; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">◀ Anterior</button>
+              <span id="pageInfo" style="font-size: 0.85rem; color: #e2e8f0;">Página <span id="pageNum">1</span> de <span id="pageCount">--</span></span>
+              <button id="btnNextPage" style="background: #4a5568; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Siguiente ▶</button>
+            </div>
+            <div style="flex: 1; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 15px;">
+              <canvas id="pdfCanvas" style="box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 100%; background: white;"></canvas>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (esEpub) {
+      visualizadorHTML = `
+        <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
+          <strong>Libro Digital (EPUB):</strong>
+          <div style="margin-top: 10px; padding: 15px; background: #f9fafb; border-radius: 8px; text-align: center;">
+            <p style="color: var(--muted, #666); margin-bottom: 5px; font-size: 0.9rem;">Este formato está protegido para lectura exclusiva en línea.</p>
+          </div>
+        </div>
+      `;
+    } else {
+      visualizadorHTML = `
+        <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px; text-align: center;">
+          <p style="color: var(--muted, #888); font-size: 0.85rem; font-style: italic;">Visualización restringida.</p>
+        </div>
+      `;
+    }
+  } else {
+    visualizadorHTML = `
+      <div style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px; text-align: center;">
+        <p style="color: var(--muted, #888); font-size: 0.85rem; font-style: italic;">Este libro no tiene un archivo digital disponible.</p>
+      </div>
+    `;
+  }
+
+  modalBody.innerHTML = `
+    <div style="display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start;">
+      <div>
+        ${portada}
+        <div style="margin-top: 10px; text-align: center;">
+          <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${formato}</span>
+        </div>
+      </div>
+      <div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 8px; color: #111827;">${titulo}</h2>
+        ${subtitulo}
+        <p style="margin: 6px 0; color: #4b5563;"><strong>Autor:</strong> ${autor}</p>
+        <p style="margin: 6px 0; color: #4b5563;"><strong>Editorial:</strong> ${editorial} (${anio})</p>
+        ${idioma}
+        ${pais}
+
+        <div id="modalCategoriesContainer" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+          <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+            <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+          </strong>
+          <span style="color: #6b7280; font-size: 0.85rem;">Cargando...</span>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <strong style="color: #111827; display: block; margin-bottom: 4px;">Descripción:</strong>
+          <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">${descripcion}</p>
+        </div>
+      </div>
+    </div>
+    ${visualizadorHTML}
+
+    <div style="margin-top: 32px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
+      <h4 style="font-size: 1.1rem; margin-bottom: 14px; font-family: 'Fraunces', serif; color: #1f2937;">Libros recomendados de este autor</h4>
+      <div id="modalRecommendedGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
+        <p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Buscando recomendaciones...</p>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+
+  const idLibro = book.id || book.idLibro || book.id_libro;
+  if (idLibro) {
+    fetchCategoriasPorLibro(idLibro).then(categorias => {
+      const container = modal.querySelector('#modalCategoriesContainer');
+      if (!container) return;
+
+      if (!categorias || categorias.length === 0) {
+        container.innerHTML = `
+          <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+            <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+          </strong>
+          <span style="color: #9ca3af; font-size: 0.85rem;"><em>Sin categorías asignadas</em></span>
+        `;
+        return;
+      }
+
+      const badges = categorias.map(cat => {
+        const nombre = typeof cat === 'object' 
+          ? (cat.nombre || cat.nombreCategoria || cat.categoria?.nombre || cat.name) 
+          : cat;
+        return `<span style="background: #eeefff; color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${nombre}</span>`;
+      }).join('');
+
+      container.innerHTML = `
+        <strong style="color: #111827; font-size: 0.875rem; margin-right: 4px;">
+          <i class="fa-solid fa-tags" style="color: #6366f1;"></i> Categorías:
+        </strong>
+        ${badges}
+      `;
+    }).catch(err => {
+      console.error('Error al obtener categorías:', err);
+    });
+  }
+
+  const autorLibro = book.autor || book.nombre_autor;
+  if (autorLibro && idLibro) {
+    loadModalRecommendations(book, idLibro);
+  } else {
+    const recContainer = modal.querySelector('#modalRecommendedGrid');
+    if (recContainer) recContainer.innerHTML = '<p style="color: var(--muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay recomendaciones disponibles para este autor.</p>';
+  }
+
+  const pdfCanvas = modal.querySelector('#pdfCanvas');
+  if (pdfCanvas && archivoFinalUrl) {
+    loadPdfViewerScript(archivoFinalUrl, modal);
+  }
+
+  const btnFullscreen = modal.querySelector('#btnFullscreenReader');
+  const readerContainer = modal.querySelector('#readerContainer');
+  if (btnFullscreen && readerContainer) {
+    btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        readerContainer.requestFullscreen().catch(err => {
+          console.warn("Error al intentar activar pantalla completa:", err);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  }
+}
+
+async function loadModalRecommendations(bookOrAuthorData, currentBookId) {
+  const container = document.getElementById('modalRecommendedGrid');
+  if (!container) return;
+
+  const autorNombre = typeof bookOrAuthorData === 'object' && bookOrAuthorData !== null
+    ? (bookOrAuthorData.autor || bookOrAuthorData.nombre_autor)
+    : bookOrAuthorData;
+
+  if (!autorNombre) {
+    container.innerHTML = '<p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay autor asociado para mostrar recomendaciones.</p>';
+    return;
+  }
+
+  try {
+    const data = await fetchLibros({ 
+      nombre_autor: autorNombre, 
+      page: 0, 
+      size: 10 
+    });
+
+    const allBooks = Array.isArray(data) ? data : (data.content || []);
+
+    const books = allBooks
+      .filter(b => String(b.id) !== String(currentBookId))
+      .slice(0, 5);
+
+    if (books.length === 0) {
+      container.innerHTML = '<p style="color: var(--muted, #666); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No hay más libros de este autor.</p>';
+      return;
+    }
+
+    const PALETTE = window.PALETTE || ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+    container.innerHTML = books.map((recBook, idx) => {
+      const color = PALETTE[idx % PALETTE.length];
+      const rTitle = recBook.titulo || 'Sin título';
+      const rAuthor = recBook.autor || recBook.nombre_autor || 'Autor desconocido';
+      const rPortada = recBook.portadaUrl;
+
+      const rCoverHTML = rPortada
+        ? `<img src="${rPortada}" alt="${rTitle}" style="width: 100%; height: 110px; object-fit: cover; border-radius: 4px; margin-bottom: 6px;">`
+        : `<div style="width: 100%; height: 110px; background: ${color}; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; text-align: center; padding: 4px; margin-bottom: 6px;">${rTitle}</div>`;
+
+      const rawRecData = JSON.stringify(recBook).replace(/'/g, "&apos;");
+
+      return `
+        <div class="recommended-mini-card" data-book='${rawRecData}' style="cursor: pointer; background: #f9fafb; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 8px; text-align: center; transition: transform 0.2s ease;">
+          ${rCoverHTML}
+          <h5 style="font-size: 0.75rem; font-weight: 600; margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${rTitle}">${rTitle}</h5>
+          <span style="font-size: 0.68rem; color: var(--muted, #6b7280); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rAuthor}</span>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.recommended-mini-card').forEach(card => {
+      card.addEventListener('click', async () => {
+        const recRaw = card.getAttribute('data-book');
+        if (!recRaw) return;
+        try {
+          const basicRec = JSON.parse(recRaw.replace(/&apos;/g, "'"));
+          
+          openBookModal({ ...basicRec, descripcion: 'Cargando detalles adicionales...' });
+          
+          if (basicRec.id) {
+            const details = await fetchLibroDetalles(basicRec.id);
+            openBookModal({ ...basicRec, ...details });
+            loadModalRecommendations(details, basicRec.id);
+          }
+        } catch (e) {
+          console.error('Error al abrir libro recomendado:', e);
+        }
+      });
+    });
+
+  } catch (err) {
+    console.warn('Error al cargar recomendaciones:', err);
+    container.innerHTML = '<p style="color: var(--danger-color, #dc2626); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">No se pudieron cargar las recomendaciones.</p>';
+  }
+}
+
+function loadPdfViewerScript(pdfUrl, modal) {
+  if (!window.pdfjsLib) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      initPdfRenderer(pdfUrl, modal);
+    };
+    document.head.appendChild(script);
+  } else {
+    initPdfRenderer(pdfUrl, modal);
+  }
+}
+
+function initPdfRenderer(url, modal) {
+  let pdfDoc = null,
+      pageNum = 1,
+      pageRendering = false,
+      pageNumPending = null,
+      scale = 1.2;
+
+  const canvas = modal.querySelector('#pdfCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function renderPage(num) {
+    pageRendering = true;
+    pdfDoc.getPage(num).then(function(page) {
+      const viewport = page.getViewport({ scale: scale });
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      };
+      const renderTask = page.render(renderContext);
+
+      renderTask.promise.then(function() {
+        pageRendering = false;
+        if (pageNumPending !== null) {
+          renderPage(pageNumPending);
+          pageNumPending = null;
+        }
+      });
+    });
+
+    const pageNumEl = modal.querySelector('#pageNum');
+    if (pageNumEl) pageNumEl.textContent = num;
+  }
+
+  function queueRenderPage(num) {
+    if (pageRendering) {
+      pageNumPending = num;
+    } else {
+      renderPage(num);
+    }
+  }
+
+  function onPrevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+  }
+
+  function onNextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
+  }
+
+  const btnPrev = modal.querySelector('#btnPrevPage');
+  const btnNext = modal.querySelector('#btnNextPage');
+  if (btnPrev) btnPrev.addEventListener('click', onPrevPage);
+  if (btnNext) btnNext.addEventListener('click', onNextPage);
+
+  window.pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+    pdfDoc = pdfDoc_;
+    const pageCountEl = modal.querySelector('#pageCount');
+    if (pageCountEl) pageCountEl.textContent = pdfDoc.numPages;
+    renderPage(pageNum);
+  }).catch(err => {
+    console.error("Error al cargar el archivo PDF con PDF.js:", err);
+    const readerContainer = modal.querySelector('#readerContainer');
+    if (readerContainer) {
+      readerContainer.innerHTML = '<p style="color: white; padding: 20px; text-align: center;">No se pudo cargar el documento PDF.</p>';
+    }
+  });
+}

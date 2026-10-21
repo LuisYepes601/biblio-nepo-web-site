@@ -446,9 +446,14 @@ export function loadDashboardView() {
     <div id="view-profile" class="admin-view" style="display: none;">
       <div class="profile-container">
         
-        <header class="profile-header">
-          <span class="profile-badge-tag">CONFIGURACIÓN</span>
-          <h2 class="profile-title">Mi Perfil</h2>
+        <header class="profile-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span class="profile-badge-tag">CONFIGURACIÓN</span>
+            <h2 class="profile-title">Mi Perfil</h2>
+          </div>
+          <button id="btn-logout-profile" style="padding: 8px 16px; border-radius: 8px; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+          </button>
         </header>
 
         <div class="profile-vertical-layout">
@@ -555,6 +560,16 @@ export function loadDashboardView() {
 
   const inputFotoPerfil = document.getElementById('input-foto-perfil');
   if (inputFotoPerfil) inputFotoPerfil.addEventListener('change', manejarCambioFotoPerfil);
+
+  // Redirección y limpieza desde la vista de perfil
+  const btnLogoutProfile = document.getElementById('btn-logout-profile');
+  if (btnLogoutProfile) {
+    btnLogoutProfile.addEventListener('click', () => {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userId');
+      window.location.href = 'index.html';
+    });
+  }
 
   initHeaderCarousel();
   initPinterestCardSlideshows();
