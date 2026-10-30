@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'https://biblio-nepo-api.onrender.com',
+  BASE_URL: 'https://biblio-nepo-api-f9dq.onrender.com',
   ENDPOINTS: {
     USERS_ADMIN: '/api/v1/users/admin',
     LIBROS_ADMIN: '/api/v1/libros/admin',
