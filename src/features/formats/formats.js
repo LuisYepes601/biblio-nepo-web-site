@@ -62,12 +62,12 @@ export async function loadFormatsView() {
 
       <!-- MÓDULO DE FORMATOS -->
       <section class="formats-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
-        <div class="formats-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div class="formats-header module-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Listado de Formatos</h3>
             <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Tipos de medios disponibles (ej. Físico, PDF, Audiolibro, Epub).</p>
           </div>
-          <button class="btn-primary" id="btnNewFormat" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          <button class="btn-primary" id="btn-add-format" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> Nuevo Formato
           </button>
         </div>
@@ -249,29 +249,31 @@ function renderFormatsTable(formats) {
     const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción asignada.';
     const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
+    const nombreBuscable = nombre.toLowerCase();
+
     return `
       <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
         <td style="padding: 14px 20px; font-weight: 600; color: #0f172a; text-transform: capitalize; width: 35%;">
-          ${nombre.toLowerCase()}
+          ${nombreBuscable}
         </td>
         <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 50%;">
           ${descripcion}
         </td>
         <td style="padding: 14px 20px; text-align: right; width: 15%;">
           <div style="display: inline-flex; gap: 4px; align-items: center;">
-            <button class="icon-btn btn-format-details" data-id="${id}" title="Ver Auditoría" style="
+            <button class="icon-btn btn-format-details btn-details" data-id="${id}" data-nombre="${nombreBuscable}" title="Ver Auditoría" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #6366f1; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-eye"></i>
             </button>
 
-            <button class="icon-btn btn-format-edit" data-id="${id}" title="Editar" style="
+            <button class="icon-btn btn-format-edit btn-edit" data-id="${id}" data-nombre="${nombreBuscable}" title="Editar" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-pen"></i>
             </button>
 
-            <button class="icon-btn btn-format-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+            <button class="icon-btn btn-format-delete btn-delete" data-id="${id}" data-nombre="${nombreBuscable}" title="Eliminar" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #ef4444; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-trash"></i>
@@ -418,7 +420,7 @@ function openFormatEditModal(id) {
   const descVal = format.descripcion || format.description || '';
 
   body.innerHTML = `
-    <form id="editFormatForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="editFormatForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre del Formato *</label>
         <input type="text" id="editFormatNombre" value="${nombreVal}" required style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -430,11 +432,16 @@ function openFormatEditModal(id) {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelEditFormatBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
+        <button type="button" id="cancelEditFormatBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('editFormatNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelEditFormatBtn').addEventListener('click', closeFormatModal);
 
@@ -478,7 +485,7 @@ function openFormatCreateModal() {
   modal.style.display = 'flex';
 
   body.innerHTML = `
-    <form id="createFormatForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="createFormatForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre del Formato *</label>
         <input type="text" id="createFormatNombre" required placeholder="Ej. Audiolibro, Pasta Dura, PDF" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -490,11 +497,16 @@ function openFormatCreateModal() {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelCreateFormatBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
+        <button type="button" id="cancelCreateFormatBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('createFormatNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelCreateFormatBtn').addEventListener('click', closeFormatModal);
 
@@ -618,7 +630,7 @@ function initSearchListeners() {
 }
 
 function initNewFormatButtonListener() {
-  const btn = document.getElementById('btnNewFormat');
+  const btn = document.getElementById('btn-add-format') || document.getElementById('btnNewFormat');
   if (btn) {
     btn.addEventListener('click', openFormatCreateModal);
   }

@@ -914,4 +914,56 @@ p {
 #admin-content-container .libro-card button:last-of-type:hover {
   background-color: #1d4ed8 !important;
   transform: translateY(-1px) !important;
+}/* ==========================================================================
+   ESTILOS PARA CONTROL POR VOZ (A11Y)
+   ========================================================================== */
+.btn-voice-nav {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-voice-nav:hover {
+  background-color: #dbeafe !important;
+}
+
+.btn-voice-nav.listening {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+  animation: pulse-mic 1.5s infinite;
+}
+
+@keyframes pulse-mic {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* Mensaje Toast para retroalimentación de voz */
+.voice-toast {
+  visibility: hidden;
+  min-width: 250px;
+  background-color: #1e293b;
+  color: #fff;
+  text-align: center;
+  border-radius: 8px;
+  padding: 12px 16px;
+  position: fixed;
+  z-index: 9999;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s, bottom 0.3s;
+}
+
+.voice-toast.show {
+  visibility: visible;
+  opacity: 1;
+  bottom: 50px;
 }

@@ -1,6 +1,5 @@
 import { 
   fetchAuthors, fetchAuthorDetails, createAuthor, updateAuthor, fetchPaises } from './authors.api.js';
-// 🔴 CORREGIDO: Subimos un nivel para encontrar el módulo dentro de /admin/
 import { navigateToView } from '../admin/admin.navigation.js';
 
 export async function loadAuthorsView() {
@@ -54,12 +53,12 @@ export async function loadAuthorsView() {
       <!-- CONTENEDOR PRINCIPAL -->
       <section class="authors-module-container">
         
-        <div class="authors-header">
+        <div class="authors-header module-header">
           <div>
             <h3>Listado de Autores</h3>
             <p>Búsqueda y administración de perfiles.</p>
           </div>
-          <button class="btn-primary" id="btnNewAuthor">
+          <button class="btn-primary" id="btn-add-author">
             <i class="fa-solid fa-plus"></i> Nuevo Autor
           </button>
         </div>
@@ -201,7 +200,8 @@ function renderAuthors(authors) {
 
   grid.innerHTML = authors.map(author => {
     const fullName = `${author.nombre || ''} ${author.segundoNombre || ''} ${author.primerApellido || ''} ${author.segundoApellido || ''}`.replace(/\s+/g, ' ').trim();
-    
+    const fullNameBuscable = fullName.toLowerCase();
+
     return `
       <div class="author-card">
         <div class="author-card-top">
@@ -212,8 +212,8 @@ function renderAuthors(authors) {
           <p><i class="fa-solid fa-id-badge"></i> ID: ${author.id}</p>
         </div>
         <div class="author-actions">
-          <button class="icon-btn btn-edit" data-id="${author.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-          <button class="icon-btn btn-details" data-id="${author.id}" title="Ver Detalles"><i class="fa-solid fa-eye"></i></button>
+          <button class="icon-btn btn-edit" data-id="${author.id}" data-nombre="${fullNameBuscable}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+          <button class="icon-btn btn-details" data-id="${author.id}" data-nombre="${fullNameBuscable}" title="Ver Detalles"><i class="fa-solid fa-eye"></i></button>
         </div>
       </div>
     `;
@@ -235,7 +235,7 @@ function renderAuthors(authors) {
 }
 
 function initNewAuthorButtonListener() {
-  const btnNewAuthor = document.getElementById('btnNewAuthor');
+  const btnNewAuthor = document.getElementById('btn-add-author') || document.getElementById('btnNewAuthor');
   if (btnNewAuthor) {
     btnNewAuthor.addEventListener('click', () => {
       openCreateModal();
@@ -264,7 +264,7 @@ async function openCreateModal() {
   const paisesOptions = listaPaises.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
 
   bodyContent.innerHTML = `
-    <form id="createAuthorForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="createAuthorForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div style="display: flex; gap: 10px;">
         <div style="flex: 1;">
           <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Primer Nombre *</label>
@@ -325,11 +325,16 @@ async function openCreateModal() {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelCreateBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" class="btn-primary" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
+        <button type="button" id="cancelCreateBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-primary btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('createNombre');
+    if (input) input.focus();
+  }, 100);
 
   const imageInput = document.getElementById('createImgFile');
   const imgPreviewLarge = document.getElementById('createImgPreviewLarge');
@@ -359,9 +364,7 @@ async function openCreateModal() {
     }
   });
 
-  document.getElementById('cancelCreateBtn').addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
+  document.getElementById('cancelCreateBtn').addEventListener('click', closeAuthorModal);
 
   document.getElementById('createAuthorForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -389,7 +392,7 @@ async function openCreateModal() {
     if (loadingModal) loadingModal.style.display = 'none';
 
     if (success) {
-      modal.style.display = 'none';
+      closeAuthorModal();
       await loadAndRenderAuthors();
     } else {
       alert('Error al registrar el autor.');
@@ -475,7 +478,7 @@ async function openEditModal(id) {
   const currentPhotoUrl = details.urlFoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=faces';
 
   bodyContent.innerHTML = `
-    <form id="editAuthorForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="editAuthorForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       
       <div style="display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
         <img id="imgPreviewSmall" src="${currentPhotoUrl}" alt="Foto" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
@@ -537,11 +540,16 @@ async function openEditModal(id) {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelEditBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" class="btn-primary" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
+        <button type="button" id="cancelEditBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-primary btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('editNombre');
+    if (input) input.focus();
+  }, 100);
 
   const imageInput = document.getElementById('editImgFile');
   const imgPreviewSmall = document.getElementById('imgPreviewSmall');
@@ -574,9 +582,7 @@ async function openEditModal(id) {
   actualizarEstadoFechaFallecimiento();
   checkboxFallecido.addEventListener('change', actualizarEstadoFechaFallecimiento);
 
-  document.getElementById('cancelEditBtn').addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
+  document.getElementById('cancelEditBtn').addEventListener('click', closeAuthorModal);
 
   document.getElementById('editAuthorForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -604,7 +610,7 @@ async function openEditModal(id) {
     if (loadingModal) loadingModal.style.display = 'none';
 
     if (success) {
-      modal.style.display = 'none';
+      closeAuthorModal();
       const searchAuthorInput = document.getElementById('searchAuthorName');
       const searchBookInput = document.getElementById('searchBookName');
       await loadAndRenderAuthors(
@@ -622,18 +628,25 @@ function initModalListeners() {
   const closeBtn = document.getElementById('closeModalBtn');
   
   if (closeBtn && modal) {
-    closeBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
+    closeBtn.addEventListener('click', closeAuthorModal);
   }
 
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
-        modal.style.display = 'none';
+        closeAuthorModal();
       }
     });
   }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAuthorModal();
+  });
+}
+
+export function closeAuthorModal() {
+  const modal = document.getElementById('authorModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function initSearchListeners() {

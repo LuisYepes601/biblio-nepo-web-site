@@ -62,12 +62,12 @@ export async function loadRolesView() {
 
       <!-- MÓDULO DE ROLES -->
       <section class="roles-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
-        <div class="roles-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div class="roles-header module-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Listado de Roles</h3>
             <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Definición de roles asignables en la plataforma.</p>
           </div>
-          <button class="btn-primary" id="btnNewRole" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          <button class="btn-primary" id="btn-add-role" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> Nuevo Rol
           </button>
         </div>
@@ -256,6 +256,8 @@ function renderRolesTable(roles) {
     const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción asignada.';
     const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
+    const nombreBuscable = nombre.toLowerCase();
+
     let badgeBg = '#e0e7ff';
     let badgeColor = '#4f46e5';
     if (nombre.toUpperCase().includes('ADMIN')) {
@@ -278,7 +280,7 @@ function renderRolesTable(roles) {
         </td>
         <td style="padding: 14px 20px; text-align: right; width: 15%;">
           <div style="display: inline-flex; gap: 4px; align-items: center;">
-            <button class="icon-btn btn-role-details" data-id="${id}" title="Ver Auditoría" style="
+            <button class="icon-btn btn-role-details btn-details" data-id="${id}" data-nombre="${nombreBuscable}" title="Ver Auditoría" style="
               background: transparent; 
               border: 1px solid #e2e8f0; 
               width: 30px; 
@@ -295,7 +297,7 @@ function renderRolesTable(roles) {
               <i class="fa-solid fa-eye"></i>
             </button>
 
-            <button class="icon-btn btn-role-edit" data-id="${id}" title="Editar" style="
+            <button class="icon-btn btn-role-edit btn-edit" data-id="${id}" data-nombre="${nombreBuscable}" title="Editar" style="
               background: transparent; 
               border: 1px solid #e2e8f0; 
               width: 30px; 
@@ -312,7 +314,7 @@ function renderRolesTable(roles) {
               <i class="fa-solid fa-pen"></i>
             </button>
 
-            <button class="icon-btn btn-role-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+            <button class="icon-btn btn-role-delete btn-delete" data-id="${id}" data-nombre="${nombreBuscable}" title="Eliminar" style="
               background: transparent; 
               border: 1px solid #e2e8f0; 
               width: 30px; 
@@ -470,7 +472,7 @@ function openRoleEditModal(id) {
   const descVal = role.descripcion || role.description || '';
 
   body.innerHTML = `
-    <form id="editRoleForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="editRoleForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre del Rol *</label>
         <input type="text" id="editRoleNombre" value="${nombreVal}" required style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -482,11 +484,16 @@ function openRoleEditModal(id) {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelEditRoleBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
+        <button type="button" id="cancelEditRoleBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('editRoleNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelEditRoleBtn').addEventListener('click', closeRoleModal);
 
@@ -530,7 +537,7 @@ function openRoleCreateModal() {
   modal.style.display = 'flex';
 
   body.innerHTML = `
-    <form id="createRoleForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="createRoleForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre del Rol *</label>
         <input type="text" id="createRoleNombre" required placeholder="Ej. ROLE_BIBLIOTECARIO" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -542,11 +549,16 @@ function openRoleCreateModal() {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelCreateRoleBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
+        <button type="button" id="cancelCreateRoleBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('createRoleNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelCreateRoleBtn').addEventListener('click', closeRoleModal);
 
@@ -670,7 +682,7 @@ function initSearchListeners() {
 }
 
 function initNewRoleButtonListener() {
-  const btn = document.getElementById('btnNewRole');
+  const btn = document.getElementById('btn-add-role') || document.getElementById('btnNewRole');
   if (btn) {
     btn.addEventListener('click', openRoleCreateModal);
   }

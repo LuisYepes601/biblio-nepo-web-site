@@ -61,12 +61,12 @@ export async function loadCategoriesView() {
 
       <!-- MÓDULO PRINCIPAL DE CATEGORÍAS -->
       <section class="categories-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
-        <div class="categories-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div class="categories-header module-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Listado de Categorías</h3>
             <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Control de taxonomías y organización del catálogo.</p>
           </div>
-          <button class="btn-primary" id="btnNewCategory" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          <button class="btn-primary" id="btn-add-category" style="padding: 9px 16px; border-radius: 8px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> Nueva Categoría
           </button>
         </div>
@@ -109,7 +109,6 @@ export async function loadCategoriesView() {
     </div>
   `;
 
-    // Evento del botón de regreso
     const btnBack = document.getElementById('btnBackToDashboard');
     if (btnBack) {
         btnBack.addEventListener('click', () => {
@@ -117,9 +116,7 @@ export async function loadCategoriesView() {
         });
     }
 
-    // Inicializar carrusel hero
     initCategoriesCarousel();
-
     initSearchListeners();
     initModalListeners();
     initNewCategoryButtonListener();
@@ -233,7 +230,6 @@ async function loadAndRenderCategories(categoryName = currentSearchQuery, page =
     }
 }
 
-/* RENDERIZADO SIN COLUMNA DE ID */
 function renderCategoriesTable(categories) {
     const container = document.getElementById('categoriesTableContainer');
     if (!container) return;
@@ -255,63 +251,32 @@ function renderCategoriesTable(categories) {
         const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción';
         const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
+        const nombreBuscable = nombre.toLowerCase();
+
         return `
           <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
             <td style="padding: 14px 20px; font-weight: 600; color: #0f172a; text-transform: capitalize; width: 35%;">
-              ${nombre.toLowerCase()}
+              ${nombreBuscable}
             </td>
             <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 50%;">
               ${descripcion}
             </td>
             <td style="padding: 14px 20px; text-align: right; width: 15%;">
               <div style="display: inline-flex; gap: 4px; align-items: center;">
-                <button class="icon-btn btn-details" data-id="${id}" title="Ver Detalles" style="
-                  background: transparent; 
-                  border: 1px solid #e2e8f0; 
-                  width: 30px; 
-                  height: 30px; 
-                  border-radius: 6px; 
-                  cursor: pointer; 
-                  color: #6366f1; 
-                  display: inline-flex; 
-                  align-items: center; 
-                  justify-content: center; 
-                  font-size: 0.8rem; 
-                  transition: background 0.15s ease;
+                <button class="icon-btn btn-details" data-id="${id}" data-nombre="${nombreBuscable}" title="Ver Detalles" style="
+                  background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #6366f1; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
                 " onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='transparent'">
                   <i class="fa-solid fa-eye"></i>
                 </button>
 
-                <button class="icon-btn btn-edit" data-id="${id}" title="Editar" style="
-                  background: transparent; 
-                  border: 1px solid #e2e8f0; 
-                  width: 30px; 
-                  height: 30px; 
-                  border-radius: 6px; 
-                  cursor: pointer; 
-                  color: #475569; 
-                  display: inline-flex; 
-                  align-items: center; 
-                  justify-content: center; 
-                  font-size: 0.8rem; 
-                  transition: background 0.15s ease;
+                <button class="icon-btn btn-edit" data-id="${id}" data-nombre="${nombreBuscable}" title="Editar" style="
+                  background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
                 " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                   <i class="fa-solid fa-pen"></i>
                 </button>
 
-                <button class="icon-btn btn-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
-                  background: transparent; 
-                  border: 1px solid #e2e8f0; 
-                  width: 30px; 
-                  height: 30px; 
-                  border-radius: 6px; 
-                  cursor: pointer; 
-                  color: #ef4444; 
-                  display: inline-flex; 
-                  align-items: center; 
-                  justify-content: center; 
-                  font-size: 0.8rem; 
-                  transition: background 0.15s ease;
+                <button class="icon-btn btn-delete" data-id="${id}" data-nombre="${nombreBuscable}" title="Eliminar" style="
+                  background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #ef4444; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
                 " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
                   <i class="fa-solid fa-trash"></i>
                 </button>
@@ -414,7 +379,7 @@ function openEditModal(id) {
     }
 
     bodyContent.innerHTML = `
-    <form id="editCategoryForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="editCategoryForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre de la Categoría *</label>
         <input type="text" id="editCatNombre" value="${details.nombre || details.categoria || ''}" required style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -426,11 +391,16 @@ function openEditModal(id) {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelEditCatBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
+        <button type="button" id="cancelEditCatBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
+
+    setTimeout(() => {
+        const input = document.getElementById('editCatNombre');
+        if (input) input.focus();
+    }, 100);
 
     document.getElementById('cancelEditCatBtn').addEventListener('click', closeCategoryModal);
 
@@ -549,7 +519,7 @@ function initSearchListeners() {
 }
 
 function initNewCategoryButtonListener() {
-    const btnNewCategory = document.getElementById('btnNewCategory');
+    const btnNewCategory = document.getElementById('btn-add-category');
     if (btnNewCategory) {
         btnNewCategory.addEventListener('click', () => {
             openCreateModal();
@@ -567,7 +537,7 @@ async function openCreateModal() {
     modal.style.display = 'flex';
 
     bodyContent.innerHTML = `
-    <form id="createCategoryForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="createCategoryForm" class="form-container" style="display: flex; flex-direction: column; gap: 12px;">
       <div>
         <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Nombre de la Categoría *</label>
         <input type="text" id="createCatNombre" required placeholder="Ej. Ciencia Ficción, Historia" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
@@ -579,11 +549,16 @@ async function openCreateModal() {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" id="cancelCreateCatBtn" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
+        <button type="button" id="cancelCreateCatBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
       </div>
     </form>
   `;
+
+    setTimeout(() => {
+        const input = document.getElementById('createCatNombre');
+        if (input) input.focus();
+    }, 100);
 
     document.getElementById('cancelCreateCatBtn').addEventListener('click', closeCategoryModal);
 

@@ -57,12 +57,12 @@ export async function loadBookGenresView() {
 
     <section class="genres-module-container">
       <!-- CABECERA Y BOTÓN NUEVO -->
-      <div class="genres-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+      <div class="genres-header module-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
         <div>
           <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b;">Géneros Registrados</h3>
           <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Clasificación temática para los libros del catálogo.</p>
         </div>
-        <button class="btn-primary" id="btnNewGenre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background 0.15s ease;">
+        <button class="btn-primary" id="btn-add-genre" style="padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background 0.15s ease;">
           <i class="fa-solid fa-plus"></i> Nuevo Género
         </button>
       </div>
@@ -229,29 +229,31 @@ function renderGenresTable(items) {
     const hasDesc = rawDesc && rawDesc.trim() !== '' && rawDesc.trim().toLowerCase() !== 'sin descripción asignada.';
     const descripcion = hasDesc ? rawDesc : 'Sin descripción asignada.';
 
+    const nombreBuscable = nombre.toLowerCase();
+
     return `
       <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
         <td style="padding: 14px 20px; font-weight: 600; color: #0f172a; text-transform: capitalize; width: 30%;">
-          ${nombre.toLowerCase()}
+          ${nombreBuscable}
         </td>
         <td style="padding: 14px 20px; color: ${hasDesc ? '#475569' : '#94a3b8'}; font-style: ${hasDesc ? 'normal' : 'italic'}; line-height: 1.4; width: 55%;">
           ${descripcion}
         </td>
         <td style="padding: 14px 20px; text-align: right; width: 15%;">
           <div style="display: inline-flex; gap: 4px; align-items: center;">
-            <button class="icon-btn btn-genre-details" data-id="${id}" title="Ver Auditoría" style="
+            <button class="icon-btn btn-genre-details btn-details" data-id="${id}" data-nombre="${nombreBuscable}" title="Ver Auditoría" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-eye"></i>
             </button>
 
-            <button class="icon-btn btn-genre-edit" data-id="${id}" title="Editar" style="
+            <button class="icon-btn btn-genre-edit btn-edit" data-id="${id}" data-nombre="${nombreBuscable}" title="Editar" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-pen"></i>
             </button>
 
-            <button class="icon-btn btn-genre-delete" data-id="${id}" data-nombre="${nombre}" title="Eliminar" style="
+            <button class="icon-btn btn-genre-delete btn-delete" data-id="${id}" data-nombre="${nombreBuscable}" title="Eliminar" style="
               background: transparent; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #ef4444; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: background 0.15s ease;
             " onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
               <i class="fa-solid fa-trash"></i>
@@ -421,7 +423,7 @@ function openGenreEditModal(id) {
   const descVal = item.descripcion || item.description || '';
 
   body.innerHTML = `
-    <form id="editGenreForm" style="display: flex; flex-direction: column; gap: 14px;">
+    <form id="editGenreForm" class="form-container" style="display: flex; flex-direction: column; gap: 14px;">
       <div>
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Nombre del Género *</label>
         <input type="text" id="editGenreNombre" value="${nombreVal}" required placeholder="Ej. Novela Histórica, Ciencia Ficción" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;">
@@ -433,11 +435,16 @@ function openGenreEditModal(id) {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-        <button type="button" id="cancelEditGenreBtn" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
-        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Guardar Cambios</button>
+        <button type="button" id="cancelEditGenreBtn" class="btn-secondary" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Guardar Cambios</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('editGenreNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelEditGenreBtn').addEventListener('click', closeGenreModal);
 
@@ -491,7 +498,7 @@ function openGenreCreateModal() {
       </div>
     </div>
 
-    <form id="createGenreForm" style="display: flex; flex-direction: column; gap: 14px;">
+    <form id="createGenreForm" class="form-container" style="display: flex; flex-direction: column; gap: 14px;">
       <div>
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Nombre del Género *</label>
         <input type="text" id="createGenreNombre" required placeholder="Ej. Fantasía, Biografía, Poesía" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;">
@@ -503,11 +510,16 @@ function openGenreCreateModal() {
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-        <button type="button" id="cancelCreateGenreBtn" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
-        <button type="submit" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Registrar</button>
+        <button type="button" id="cancelCreateGenreBtn" class="btn-secondary" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500;">Cancelar</button>
+        <button type="submit" class="btn-success" style="padding: 10px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 600;">Registrar</button>
       </div>
     </form>
   `;
+
+  setTimeout(() => {
+    const input = document.getElementById('createGenreNombre');
+    if (input) input.focus();
+  }, 100);
 
   document.getElementById('cancelCreateGenreBtn').addEventListener('click', closeGenreModal);
 
@@ -631,7 +643,7 @@ function initSearchListeners() {
 }
 
 function initNewGenreButtonListener() {
-  const btn = document.getElementById('btnNewGenre');
+  const btn = document.getElementById('btn-add-genre') || document.getElementById('btnNewGenre');
   if (btn) {
     btn.addEventListener('click', openGenreCreateModal);
   }
