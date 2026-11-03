@@ -4,7 +4,7 @@ import {
     updateCategoria,
     deleteCategoria
 } from '../categories/categories.api.js';
-import { navigateToView } from '../admin/admin.navigation.js';
+import { navigateToView, hablarTexto } from '../admin/admin.navigation.js';
 
 let currentPage = 0;
 let totalPages = 1;
@@ -87,11 +87,11 @@ export async function loadCategoriesView() {
     </div>
 
     <!-- Modal General -->
-    <div id="categoryModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;">
-      <div class="modal-content" style="background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 520px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-          <h3 id="categoryModalTitle" style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 700;">Detalles de la Categoría</h3>
-          <button id="closeCategoryModalBtn" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+    <div id="categoryModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;">
+      <div class="modal-content" style="background: white; padding: 24px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); position: relative; max-height: 90vh; overflow-y: auto; border: 1px solid #f1f5f9;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 id="categoryModalTitle" style="margin: 0; font-size: 1.05rem; color: #0f172a; font-weight: 700;">Detalles de la Categoría</h3>
+          <button id="closeCategoryModalBtn" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #94a3b8; transition: color 0.15s ease;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#94a3b8'"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div id="categoryModalBody"></div>
       </div>
@@ -318,12 +318,10 @@ function renderCategoriesTable(categories) {
     });
 
     document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
             const catId = e.currentTarget.getAttribute('data-id');
             const name = e.currentTarget.getAttribute('data-nombre');
-            if (confirm(`¿Estás seguro de que deseas eliminar la categoría "${name}"?`)) {
-                await handleDeleteCategory(catId);
-            }
+            openDeleteModal(catId, name);
         });
     });
 }
@@ -429,11 +427,108 @@ function openEditModal(id) {
             await updateCategoria(id, payload);
             if (loadingModal) loadingModal.style.display = 'none';
             closeCategoryModal();
+            hablarTexto(`Categoría ${nombre} actualizada.`);
             await loadAndRenderCategories(currentSearchQuery, currentPage);
         } catch (err) {
             if (loadingModal) loadingModal.style.display = 'none';
             alert(err.message || 'Hubo un error al actualizar la categoría.');
         }
+    });
+}
+
+function openDeleteModal(id, name) {
+    const modal = document.getElementById('categoryModal');
+    const title = document.getElementById('categoryModalTitle');
+    const bodyContent = document.getElementById('categoryModalBody');
+    if (!modal || !bodyContent) return;
+
+    title.textContent = "Confirmación de eliminación";
+    modal.style.display = 'flex';
+
+    // 🔊 Locución auditiva explícita de confirmación de eliminación
+    hablarTexto(`¿Estás seguro de eliminar la categoría ${name}?`);
+
+    bodyContent.innerHTML = `
+    <div style="text-align: center; padding: 8px 4px 4px 4px; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      
+      <!-- ÍCONO DE ADVERTENCIA SVG EN CÍRCULO SUAVE -->
+      <div style="width: 56px; height: 56px; border-radius: 50%; background-color: #fef2f2; border: 1px solid #fee2e2; color: #ef4444; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 0 6px #fff5f5;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+
+      <!-- TÍTULO DEL MODAL -->
+      <h4 style="margin: 0 0 8px 0; font-size: 1.15rem; color: #0f172a; font-weight: 700; letter-spacing: -0.01em; line-height: 1.3;">
+        ¿Estás seguro de eliminar esta categoría?
+      </h4>
+
+      <!-- DESCRIPCIÓN Y NOMBRE DESTACADO -->
+      <p style="margin: 0 0 24px 0; font-size: 0.875rem; color: #64748b; line-height: 1.5;">
+        Estás a punto de eliminar <span style="display: inline-block; background-color: #f1f5f9; color: #0f172a; padding: 2px 8px; border-radius: 6px; font-weight: 600; border: 1px solid #e2e8f0; text-transform: capitalize; margin: 0 2px;">"${name}"</span>.<br>Esta acción es permanente y no se podrá deshacer.
+      </p>
+
+      <!-- BOTONES DE ACCIÓN -->
+      <div style="display: flex; gap: 12px; justify-content: center; width: 100%;">
+        <button type="button" id="cancelDeleteCatBtn" class="btn-secondary" style="
+          flex: 1;
+          -webkit-appearance: none;
+          appearance: none;
+          padding: 10px 16px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1 !important;
+          background-color: #ffffff !important;
+          color: #475569 !important;
+          font-size: 0.875rem;
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          outline: none;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          transition: all 0.15s ease;
+        " onmouseover="this.style.backgroundColor='#f8fafc'; this.style.borderColor='#94a3b8'" onmouseout="this.style.backgroundColor='#ffffff'; this.style.borderColor='#cbd5e1'">
+          Cancelar
+        </button>
+        
+        <button type="button" id="confirmDeleteCatBtn" class="btn-success" style="
+          flex: 1;
+          -webkit-appearance: none;
+          appearance: none;
+          padding: 10px 16px;
+          border-radius: 8px;
+          border: none !important;
+          background-color: #ef4444 !important;
+          color: #ffffff !important;
+          font-size: 0.875rem;
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          outline: none;
+          box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+          transition: all 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        " onmouseover="this.style.backgroundColor='#dc2626'" onmouseout="this.style.backgroundColor='#ef4444'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Sí, eliminar
+        </button>
+      </div>
+
+    </div>
+  `;
+
+    document.getElementById('cancelDeleteCatBtn').addEventListener('click', closeCategoryModal);
+
+    document.getElementById('confirmDeleteCatBtn').addEventListener('click', async () => {
+        closeCategoryModal();
+        await handleDeleteCategory(id);
     });
 }
 
@@ -544,21 +639,25 @@ async function openCreateModal() {
       </div>
 
       <div>
-        <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Descripción</label>
+        <label style="font-size: 0.785rem; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;">Descripción (Opcional)</label>
         <textarea id="createCatDescripcion" rows="3" placeholder="Descripción breve..." style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; resize: vertical;"></textarea>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
         <button type="button" id="cancelCreateCatBtn" class="btn-secondary" style="padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 0.825rem;">Cancelar</button>
-        <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
+        <button type="submit" id="btnSubmitCreateCat" class="btn-success" style="padding: 8px 16px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 0.825rem; font-weight: 600;">Guardar</button>
       </div>
     </form>
   `;
 
+    const inputNombre = document.getElementById('createCatNombre');
+
     setTimeout(() => {
-        const input = document.getElementById('createCatNombre');
-        if (input) input.focus();
-    }, 100);
+        if (inputNombre) inputNombre.focus();
+    }, 150);
+
+    // 🔊 Paso 1 por voz: Pedir el nombre
+    hablarTexto("Creando nueva categoría. Por favor, dime el nombre de la categoría.");
 
     document.getElementById('cancelCreateCatBtn').addEventListener('click', closeCategoryModal);
 
@@ -569,6 +668,7 @@ async function openCreateModal() {
         const descripcion = document.getElementById('createCatDescripcion').value.trim();
 
         if (!nombre) {
+            hablarTexto('El nombre de la categoría es obligatorio. Por favor, dígalo.');
             alert('El nombre de la categoría es obligatorio.');
             return;
         }
@@ -587,9 +687,11 @@ async function openCreateModal() {
             await createCategoria(payload);
             if (loadingModal) loadingModal.style.display = 'none';
             closeCategoryModal();
+            hablarTexto(`Categoría ${nombre} guardada exitosamente.`);
             await loadAndRenderCategories(currentSearchQuery, currentPage);
         } catch (err) {
             if (loadingModal) loadingModal.style.display = 'none';
+            hablarTexto('Ocurrió un error al guardar la categoría.');
             alert(err.message || 'Ocurrió un error al registrar la categoría.');
         }
     });
@@ -604,9 +706,11 @@ async function handleDeleteCategory(id) {
     try {
         await deleteCategoria(id);
         if (loadingModal) loadingModal.style.display = 'none';
+        hablarTexto('Categoría eliminada exitosamente.');
         await loadAndRenderCategories(currentSearchQuery, currentPage);
     } catch (err) {
         if (loadingModal) loadingModal.style.display = 'none';
+        hablarTexto('No se pudo eliminar la categoría.');
         alert(err.message || 'No se pudo eliminar la categoría.');
     }
 }

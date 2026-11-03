@@ -12,35 +12,76 @@ import { loadFavoritesView } from '../favoritos/favorites.component.js';
 // Control global de voz y estado de navegación
 let recognitionInstance = null;
 let isListeningGlobal = false;
-let currentViewName = ''; // Para recordar en qué sección estamos y no repetir
+let currentViewName = '';
 
 /**
- * Función para sintetizar texto a voz
+ * Obtiene una voz válida en español del navegador
+ */
+function obtenerVozEspanol() {
+  if (!('speechSynthesis' in window)) return null;
+  const voces = window.speechSynthesis.getVoices();
+  return voces.find(v => v.lang.startsWith('es') || v.lang.includes('es-ES') || v.lang.includes('es-MX')) || voces[0] || null;
+}
+
+// Precargar voces cuando estén disponibles en el navegador
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
+/**
+ * Función para sintetizar texto a voz garantizando la reproducción limpia sin bloqueos
  */
 export function hablarTexto(mensaje) {
   if (!('speechSynthesis' in window)) return;
 
-  // Pausar micrófono mientras habla para evitar auto-escucha
-  if (recognitionInstance && isListeningGlobal) {
-    try { recognitionInstance.stop(); } catch (e) {}
+  // Desatascar motor de síntesis si el navegador lo pausó
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
   }
 
+  // Detener locuciones anteriores
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(mensaje);
-  utterance.lang = 'es-ES';
-  utterance.rate = 1.0; 
-  utterance.pitch = 1;
+  // Pausar el micrófono mientras habla para evitar acoplamientos
+  if (recognitionInstance && isListeningGlobal) {
+    try { recognitionInstance.abort(); } catch (e) {}
+  }
 
-  utterance.onend = () => {
-    if (recognitionInstance && isListeningGlobal) {
-      setTimeout(() => {
-        try { recognitionInstance.start(); } catch (e) {}
-      }, 350);
+  // El retraso de 60ms permite que el navegador limpie la cola de audio antes de emitir la nueva locución
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(mensaje);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.95; 
+    utterance.pitch = 1;
+
+    const voz = obtenerVozEspanol();
+    if (voz) {
+      utterance.voice = voz;
     }
-  };
 
-  window.speechSynthesis.speak(utterance);
+    const reactivarMicrofono = () => {
+      if (recognitionInstance && isListeningGlobal) {
+        setTimeout(() => {
+          try { 
+            recognitionInstance.start(); 
+          } catch (e) {}
+        }, 300);
+      }
+    };
+
+    utterance.onend = reactivarMicrofono;
+    utterance.onerror = (err) => {
+      console.warn('Error en locución de voz:', err);
+      reactivarMicrofono();
+    };
+
+    // Referencia global para prevenir la destrucción por el limpiador de memoria de JavaScript
+    window.currentUtterance = utterance;
+
+    window.speechSynthesis.speak(utterance);
+  }, 60);
 }
 
 export function logoutUser() {
@@ -65,19 +106,19 @@ export function navigateToView(view) {
   }
 
   const nombresVistasMap = {
-    'dashboard': 'Dashboard',
+    'dashboard': 'Dashboard principal',
     'catalog': 'Catálogo de Libros',
     'favorites': 'Mis Favoritos',
     'categories': 'Categorías',
     'genres': 'Géneros Literarios',
-    'formats': 'Formatos',
+    'formats': 'Formatos de Libro',
     'authors': 'Autores',
     'id-types': 'Tipos de Documento',
     'users': 'Gestión de Usuarios',
     'roles': 'Roles y Permisos'
   };
 
-  // Cargar vista
+  // Cargar vista correspondiente
   if (view === 'dashboard') {
     loadDashboardView();
     switchView('dashboard'); 
@@ -101,12 +142,10 @@ export function navigateToView(view) {
     loadRolesView();
   }
 
-  // SOLO HABLA SI HUBO UN CAMBIO REAL DE SECCIÓN
+  // Anunciar siempre la sección en voz alta
   const nuevoNombreSeccion = nombresVistasMap[view] || view;
-  if (currentViewName !== view) {
-    currentViewName = view;
-    hablarTexto(nuevoNombreSeccion); // Locución corta y puntual (ej. "Autores")
-  }
+  currentViewName = view;
+  hablarTexto(`Sección ${nuevoNombreSeccion}`);
 }
 
 // Helper para normalizar texto
@@ -164,7 +203,6 @@ function initVoiceNavigation() {
     }
   };
 
-  // Mapeo flexible de alias
   const comandosMap = {
     'dashboard': 'dashboard', 'inicio': 'dashboard', 'panel': 'dashboard',
     'catalogo': 'catalog', 'libros': 'catalog', 'favoritos': 'favorites',
@@ -195,9 +233,8 @@ function initVoiceNavigation() {
 
     console.log(`🎤 Escuchado: "${transcriptOriginal}" | Confianza: ${confidence.toFixed(2)}`);
 
-    // Filtros de ruido
-    if (confidence > 0 && confidence < 0.70) return;
-    if (transcript.length < 3) return;
+    if (confidence > 0 && confidence < 0.65) return;
+    if (transcript.length < 2) return;
 
     // 1. Apagar micrófono
     if (transcript.includes('apagar microfono') || transcript.includes('desactivar microfono') || transcript.includes('dejar de escuchar')) {
@@ -217,16 +254,49 @@ function initVoiceNavigation() {
       return;
     }
 
-    // 3. Consultar ubicación actual sólo si se pregunta explícitamente
+    // 3. Consultar ubicación actual
     if (transcript.includes('donde estoy') || transcript.includes('seccion actual')) {
       const activeNav = document.querySelector('.sidebar-nav li.active a span');
       const nombreActual = activeNav ? activeNav.textContent.trim() : 'el panel';
-      hablarTexto(`Estás en ${nombreActual}.`);
+      hablarTexto(`Estás en la sección de ${nombreActual}.`);
       return;
     }
 
-    // 4. NAVEGACIÓN FLEXIBLE ("ir a...", "llevar a...", "abrir...", "ver...")
-    // Limpiamos los prefijos comunes para extraer la clave del módulo
+    // -------------------------------------------------------------
+    // FLUJO INTERACTIVO PASO A PASO: CREACIÓN DE CATEGORÍA POR VOZ
+    // -------------------------------------------------------------
+    const activeElement = document.activeElement;
+
+    // PASO 1: CAPTURA DEL NOMBRE
+    if (activeElement && activeElement.id === 'createCatNombre') {
+      activeElement.value = transcriptOriginal;
+      const descInput = document.getElementById('createCatDescripcion');
+      if (descInput) {
+        descInput.focus();
+        hablarTexto(`Nombre ${transcriptOriginal} capturado. Ahora dime la descripción opcional, o di 'omitir' para guardar.`);
+      }
+      return;
+    }
+
+    // PASO 2: CAPTURA DE DESCRIPCIÓN U OMITIR Y GUARDAR AUTOMÁTICAMENTE
+    if (activeElement && activeElement.id === 'createCatDescripcion') {
+      const omitirComandos = ['omitir', 'ninguna', 'ninguno', 'sin descripcion', 'saltar', 'siguiente', 'no', 'ninguna descripcion'];
+      const esOmitir = omitirComandos.some(cmd => transcript.includes(cmd));
+
+      if (esOmitir) {
+        activeElement.value = '';
+      } else {
+        activeElement.value = transcriptOriginal;
+      }
+
+      const btnSubmit = document.getElementById('btnSubmitCreateCat') || document.querySelector('#createCategoryForm button[type="submit"]');
+      if (btnSubmit) {
+        btnSubmit.click();
+      }
+      return;
+    }
+
+    // 4. Navegación entre secciones
     const textoNavegacion = transcript
       .replace(/^ir a la seccion de\s+/i, '')
       .replace(/^ir a la seccion\s+/i, '')
@@ -348,41 +418,47 @@ function initVoiceNavigation() {
     // 10. CRUD: Eliminar
     if (transcript.startsWith('eliminar ') || transcript.startsWith('borrar ') || transcript.startsWith('quitar ')) {
       const objetivo = transcript
-        .replace('eliminar ', '')
-        .replace('borrar ', '')
-        .replace('quitar ', '')
+        .replace(/^eliminar\s+/i, '')
+        .replace(/^borrar\s+/i, '')
+        .replace(/^quitar\s+/i, '')
         .trim();
 
       if (accionarBotonTabla('.btn-delete, .btn-format-delete, .btn-genre-delete, .btn-role-delete', objetivo)) {
-        showToast(`Eliminando ${objetivo}`);
+        showToast(`Solicitado eliminar ${objetivo}`, false);
         return;
       }
     }
 
-    // 11. Crear / Agregar
+    // 11. Crear / Agregar por voz
     if (transcript.includes('crear') || transcript.includes('nuevo') || transcript.includes('nueva') || transcript.includes('agregar')) {
       const btnAdd = document.querySelector('.module-header .btn-primary, #btn-add-role, #btn-add-author, #btn-add-category, #btn-add-format, #btn-add-genre, #btnNewFormat, #btnNewGenre');
       if (btnAdd) {
         btnAdd.click();
-        showToast('Formulario abierto.');
+        showToast('Formulario abierto.', false);
         return;
       }
     }
 
-    // 12. Guardar / Confirmar
-    if (transcript.includes('guardar') || transcript.includes('confirmar')) {
-      const btnSave = document.querySelector('.form-container button[type="submit"], .btn-success');
-      if (btnSave) {
-        btnSave.click();
-        showToast('Guardando.');
+    // 12. Guardar / Confirmar por voz
+    if (
+      transcript.includes('guardar') || 
+      transcript.includes('confirmar') || 
+      transcript.includes('si eliminar') || 
+      transcript.includes('si, eliminar') || 
+      transcript === 'si'
+    ) {
+      const btnConfirm = document.querySelector('#confirmDeleteCatBtn, #btnSubmitCreateCat, .form-container button[type="submit"], .btn-success');
+      if (btnConfirm) {
+        btnConfirm.click();
+        showToast('Confirmado.');
         return;
       }
     }
 
     // 13. Cancelar / Cerrar modal
-    if (transcript.includes('cancelar') || transcript.includes('regresar') || transcript.includes('cerrar') || transcript.includes('salir')) {
+    if (transcript.includes('cancelar') || transcript.includes('regresar') || transcript.includes('cerrar') || transcript.includes('salir') || transcript === 'no') {
       const btnCancel = document.querySelector(
-        '#closeRoleModalBtn, #closeModalBtn, #closeCategoryModalBtn, #closeFormatModalBtn, #closeGenreModalBtn, #cancelCreateRoleBtn, #cancelEditRoleBtn, #cancelCreateBtn, #cancelEditBtn, #cancelCreateCatBtn, #cancelEditCatBtn, #cancelCreateFormatBtn, #cancelEditFormatBtn, #cancelCreateGenreBtn, #cancelEditGenreBtn, .form-container .btn-secondary'
+        '#cancelDeleteCatBtn, #closeRoleModalBtn, #closeModalBtn, #closeCategoryModalBtn, #closeFormatModalBtn, #closeGenreModalBtn, #cancelCreateRoleBtn, #cancelEditRoleBtn, #cancelCreateBtn, #cancelEditBtn, #cancelCreateCatBtn, #cancelEditCatBtn, #cancelCreateFormatBtn, #cancelEditFormatBtn, #cancelCreateGenreBtn, #cancelEditGenreBtn, .form-container .btn-secondary'
       );
       if (btnCancel) {
         btnCancel.click();
@@ -391,8 +467,7 @@ function initVoiceNavigation() {
       }
     }
 
-    // 14. Dictado en input activo
-    const activeElement = document.activeElement;
+    // 14. Dictado en input activo general
     if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
       activeElement.value = activeElement.value ? activeElement.value + ' ' + transcriptOriginal : transcriptOriginal;
       showToast('Dictado agregado.', false);
@@ -405,10 +480,14 @@ function initVoiceNavigation() {
   };
 
   recognition.onend = () => {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      return;
+    }
+
     if (isListeningGlobal) {
       setTimeout(() => {
         try { recognition.start(); } catch(e) {}
-      }, 500); 
+      }, 300); 
     } else if (btnVoice) {
       btnVoice.classList.remove('listening');
       btnVoice.querySelector('span').textContent = 'Control por Voz';
@@ -423,7 +502,7 @@ function initVoiceNavigation() {
         hablarTexto('Desactivado.');
       } else {
         isListeningGlobal = true;
-        recognition.start();
+        try { recognition.start(); } catch(e) {}
         hablarTexto('Control por voz activado.');
       }
     });
