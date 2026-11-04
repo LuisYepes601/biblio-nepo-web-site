@@ -6,6 +6,7 @@ import { loadCategoriesView } from '../categories/categories.js';
 import { loadBookGenresView } from '../book-genres/book-genres.js';
 import { loadRolesView } from '../roles/roles.js';
 import { loadFormatsView } from '../formats/formats.js';
+import { loadBookTypesView } from '../book-types/book-types.js';
 import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
 import { loadFavoritesView } from '../favoritos/favorites.component.js'; 
 
@@ -31,7 +32,6 @@ if ('speechSynthesis' in window) {
  */
 export function hablarTexto(mensaje, forzar = false) {
   if (!('speechSynthesis' in window)) return;
-  // Solo habla si el control por voz está activo o si se fuerza explícitamente
   if (!isListeningGlobal && !forzar) return;
 
   isSpeakingTTS = true;
@@ -102,6 +102,7 @@ export function navigateToView(view) {
     'categories': 'Categorías',
     'genres': 'Géneros Literarios',
     'formats': 'Formatos de Libro',
+    'book-types': 'Tipos de Libro',
     'authors': 'Autores',
     'id-types': 'Tipos de Documento',
     'users': 'Gestión de Usuarios',
@@ -123,6 +124,8 @@ export function navigateToView(view) {
     loadBookGenresView();
   } else if (view === 'formats') {
     loadFormatsView();
+  } else if (view === 'book-types') {
+    loadBookTypesView();
   } else if (view === 'authors') {
     loadAuthorsView();
   } else if (view === 'id-types') {
@@ -175,7 +178,6 @@ function initVoiceNavigation() {
 
   const btnVoice = document.getElementById('btnVoiceNav');
 
-  // Funciones para actualizar la interfaz del botón
   const restablecerBotonVoz = () => {
     if (btnVoice) {
       btnVoice.classList.remove('listening');
@@ -199,6 +201,7 @@ function initVoiceNavigation() {
     'categorias': 'categories', 'categoria': 'categories', 'gestion de categorias': 'categories',
     'generos': 'genres', 'genero': 'genres', 'generos literarios': 'genres', 'generos libro': 'genres',
     'formatos': 'formats', 'formato': 'formats', 'formatos de libro': 'formats',
+    'tipos de libro': 'book-types', 'tipo de libro': 'book-types', 'tipos libro': 'book-types', 'tipos de libros': 'book-types',
     'autores': 'authors', 'autor': 'authors',
     'usuarios': 'users', 'usuario': 'users', 'gestion de usuarios': 'users',
     'roles': 'roles', 'rol': 'roles', 'permisos': 'roles', 'gestion de roles': 'roles',
@@ -223,7 +226,6 @@ function initVoiceNavigation() {
     if (confidence > 0 && confidence < 0.65) return;
     if (transcript.length < 2) return;
 
-    // 1. APAGAR MICRÓFONO
     if (transcript.includes('apagar microfono') || transcript.includes('desactivar microfono') || transcript.includes('dejar de escuchar')) {
       isListeningGlobal = false;
       restablecerBotonVoz();
@@ -244,7 +246,6 @@ function initVoiceNavigation() {
       return;
     }
 
-    // 2. COMANDOS DE CANCELAR Y GUARDAR
     const esCancelar = transcript === 'cancelar' || transcript.includes('cancelar') || 
                        transcript === 'cerrar' || transcript.includes('cerrar modal') ||
                        transcript.includes('regresar') || transcript.includes('volver') || transcript.includes('salir');
@@ -281,10 +282,8 @@ function initVoiceNavigation() {
       }
     }
 
-    // 3. CAPTURA Y DICTADO EN CAMPOS
     const activeElement = document.activeElement;
 
-    // Dictado del Nombre
     if (activeElement && (activeElement.id === 'createCatNombre' || activeElement.id === 'editCatNombre')) {
       const esEdicion = activeElement.id === 'editCatNombre';
       const comandosConservar = ['siguiente', 'conservar', 'mantener', 'igual', 'continuar'];
@@ -304,7 +303,6 @@ function initVoiceNavigation() {
       return;
     }
 
-    // Dictado de la Descripción
     if (activeElement && (activeElement.id === 'createCatDescripcion' || activeElement.id === 'editCatDescripcion')) {
       const omitirComandos = ['omitir', 'ninguna', 'ninguno', 'sin descripcion', 'saltar', 'siguiente'];
       const esOmitir = omitirComandos.some(cmd => transcript.includes(cmd));
@@ -319,9 +317,8 @@ function initVoiceNavigation() {
       return;
     }
 
-    // 4. ABRIR MODALES Y ACCIONES CRUD
     if (transcript.includes('crear') || transcript.includes('nuevo') || transcript.includes('nueva') || transcript.includes('agregar')) {
-      const btnAdd = document.querySelector('.module-header .btn-primary, #btn-add-role, #btn-add-author, #btn-add-category, #btn-add-format, #btn-add-genre');
+      const btnAdd = document.querySelector('.module-header .btn-primary, #btn-add-role, #btn-add-author, #btn-add-category, #btn-add-format, #btn-add-genre, #btn-add-book-type');
       if (btnAdd) {
         btnAdd.click();
         return;
@@ -330,20 +327,19 @@ function initVoiceNavigation() {
 
     if (transcript.startsWith('editar ') || transcript.startsWith('modificar ')) {
       const objetivo = transcript.replace('editar ', '').replace('modificar ', '').trim();
-      if (accionarBotonTabla('.btn-edit, .btn-format-edit, .btn-genre-edit, .btn-role-edit', objetivo)) return;
+      if (accionarBotonTabla('.btn-edit, .btn-format-edit, .btn-genre-edit, .btn-role-edit, .btn-type-edit', objetivo)) return;
     }
 
     if (transcript.startsWith('eliminar ') || transcript.startsWith('borrar ')) {
       const objetivo = transcript.replace('eliminar ', '').replace('borrar ', '').trim();
-      if (accionarBotonTabla('.btn-delete, .btn-format-delete, .btn-genre-delete, .btn-role-delete', objetivo)) return;
+      if (accionarBotonTabla('.btn-delete, .btn-format-delete, .btn-genre-delete, .btn-role-delete, .btn-type-delete', objetivo)) return;
     }
 
     if (transcript.startsWith('ver ') || transcript.startsWith('detalles de ')) {
       const objetivo = transcript.replace('ver detalles de ', '').replace('detalles de ', '').replace('ver ', '').trim();
-      if (accionarBotonTabla('.btn-details, .btn-format-details, .btn-genre-details, .btn-role-details', objetivo)) return;
+      if (accionarBotonTabla('.btn-details, .btn-format-details, .btn-genre-details, .btn-role-details, .btn-type-details', objetivo)) return;
     }
 
-    // 5. NAVEGACIÓN ENTRE SECCIONES
     const textoNavegacion = transcript
       .replace(/^ir a la seccion de\s+/i, '')
       .replace(/^ir a la seccion\s+/i, '')
@@ -435,6 +431,7 @@ export function initAdminNavigation() {
               <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree"></i> <span>Categorías</span></a></li>
               <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags"></i> <span>Géneros Libro</span></a></li>
               <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook"></i> <span>Formatos</span></a></li>
+              <li><a href="#tipos-libro" data-view="book-types"><i class="fa-solid fa-bookmark"></i> <span>Tipos de Libro</span></a></li>
               <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather"></i> <span>Autores</span></a></li>
             </ul>
           </div>

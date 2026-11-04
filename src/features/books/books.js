@@ -424,29 +424,31 @@ function renderBooks(books) {
   }
 
   const booksHtml = books.map(book => {
-    const portada = book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=100&h=100&fit=crop';
+    const portada = book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=600&fit=crop';
     const autor = book.autor || 'Autor desconocido';
     const isbn = book.isbn || 'N/A';
     const editorial = book.editorial || 'Editorial N/D';
-    const formato = book.formatoLibro || 'Estándar';
+    const formato = book.formatoLibro || 'DIGITAL';
 
     return `
-      <div class="author-card book-card-item" data-id="${book.id}" style="cursor: pointer; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.15s ease; position: relative;">
+      <div class="book-card-item" data-id="${book.id}">
         
-        <button class="btn-favorite" data-id="${book.id || ''}" title="Agregar a favoritos" style="position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.9); border: 1px solid #e2e8f0; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; transition: all 0.2s ease;">
-          <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="#dc2626" stroke-width="2" fill="none">
+        <button class="btn-favorite" data-id="${book.id || ''}" title="Agregar a favoritos">
+          <svg class="heart-icon" viewBox="0 0 24 24" width="18" height="18" stroke="#dc2626" stroke-width="2" fill="none">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
           </svg>
         </button>
 
-        <div class="author-card-top" style="display: flex; justify-content: center;">
-          <img src="${portada}" alt="${book.titulo}" class="author-avatar" style="border-radius: 8px; width: 80px; height: 100px; object-fit: cover;">
+        <div class="book-card-cover-wrapper">
+          <span class="book-format-badge">${formato}</span>
+          <img src="${portada}" alt="${book.titulo}">
         </div>
-        <div class="author-info">
-          <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">${book.titulo}</h4>
-          <p style="margin: 2px 0; font-size: 0.785rem; color: #64748b;"><i class="fa-solid fa-feather" style="margin-right: 4px; color: #6366f1;"></i> ${autor}</p>
-          <p style="margin: 2px 0; font-size: 0.785rem; color: #64748b;"><i class="fa-solid fa-barcode" style="margin-right: 4px;"></i> ISBN: ${isbn}</p>
-          <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><i class="fa-solid fa-building" style="margin-right: 4px;"></i> ${editorial} • <span style="font-weight: 600; color: #4f46e5;">${formato}</span></p>
+
+        <div class="book-card-info">
+          <h4 title="${book.titulo}">${book.titulo}</h4>
+          <p><i class="fa-solid fa-feather" style="color: #6366f1;"></i> ${autor}</p>
+          <p><i class="fa-solid fa-barcode"></i> ISBN: ${isbn}</p>
+          <p class="meta-editorial"><i class="fa-solid fa-building"></i> ${editorial}</p>
         </div>
       </div>
     `;
@@ -454,6 +456,7 @@ function renderBooks(books) {
 
   grid.innerHTML = booksHtml;
 
+  // Lógica para botones de favoritos
   grid.querySelectorAll('.btn-favorite').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -477,31 +480,26 @@ function renderBooks(books) {
           btn.style.opacity = '1';
           btn.style.transform = 'scale(1)';
           btn.innerHTML = `
-            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="#dc2626" stroke-width="2" fill="#dc2626">
+            <svg class="heart-icon" viewBox="0 0 24 24" width="18" height="18" stroke="#dc2626" stroke-width="2" fill="#dc2626">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
           `;
-
           triggerFavoriteVisualFeedback(btn, true);
           showToast('¡Guardado en tus Favoritos!', 'success');
-
         } else {
           await removeFavoriteApi(bookId);
-
           btn.classList.remove('is-favorite');
           btn.style.background = 'rgba(255, 255, 255, 0.9)';
           btn.style.opacity = '1';
           btn.style.transform = 'scale(1)';
           btn.innerHTML = `
-            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="#dc2626" stroke-width="2" fill="none">
+            <svg class="heart-icon" viewBox="0 0 24 24" width="18" height="18" stroke="#dc2626" stroke-width="2" fill="none">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
           `;
-
           triggerFavoriteVisualFeedback(btn, false);
           showToast('Eliminado de tus favoritos', 'danger');
         }
-
       } catch (err) {
         console.error('Error al actualizar favorito:', err);
         btn.style.opacity = '1';
@@ -514,6 +512,7 @@ function renderBooks(books) {
     });
   });
 
+  // Lógica para clic en la tarjeta
   grid.querySelectorAll('.book-card-item').forEach(card => {
     card.addEventListener('click', (e) => {
       e.stopPropagation();
