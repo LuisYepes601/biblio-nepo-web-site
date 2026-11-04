@@ -1,10 +1,14 @@
 import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles, fetchCategoriasPorLibro } from './catalog.api.js';
 import { getStateMessageHTML } from '../../core/components/state-message.js';
 import { addFavoriteApi, removeFavoriteApi } from '../favoritos/favorite-api.js';
+import { createLoan } from '../prestamos/prestamos.api.js';
 import { hablarTexto } from '../admin/admin.navigation.js';
 
 const PALETTE = ['#6E2A2A', '#1C2536', '#9A6A34', '#3B5B45', '#4A3B6B', '#7A4A2A', '#2E4A5E', '#5C2E4A'];
 
+/**
+ * Animación flotante de feedback para Favoritos
+ */
 function triggerFavoriteVisualFeedback(btn, isAdding) {
   const card = btn.closest('.book-card');
   const rect = btn.getBoundingClientRect();
@@ -51,6 +55,53 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
   }
 }
 
+/**
+ * Animación flotante de feedback visual para Préstamos
+ */
+function triggerLoanVisualFeedback(btn) {
+  const card = btn.closest('.book-card') || btn.closest('.book-modal-content');
+  const rect = btn.getBoundingClientRect();
+
+  const floatingIcon = document.createElement('div');
+  floatingIcon.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
+  floatingIcon.style.cssText = `
+    position: fixed;
+    left: ${rect.left + rect.width / 2 - 12}px;
+    top: ${rect.top - 8}px;
+    font-size: 1.5rem;
+    color: #2563eb;
+    pointer-events: none;
+    z-index: 99999;
+    transform: scale(0.6);
+    opacity: 1;
+    transition: all 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  `;
+  document.body.appendChild(floatingIcon);
+
+  requestAnimationFrame(() => {
+    floatingIcon.style.transform = 'translateY(-50px) scale(1.7)';
+    floatingIcon.style.opacity = '0';
+  });
+
+  setTimeout(() => {
+    floatingIcon.remove();
+  }, 780);
+
+  if (card) {
+    const originalShadow = card.style.boxShadow;
+    const originalTransform = card.style.transform;
+
+    card.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    card.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.45)';
+    card.style.transform = 'scale(1.025)';
+
+    setTimeout(() => {
+      card.style.boxShadow = originalShadow || '';
+      card.style.transform = originalTransform || '';
+    }, 450);
+  }
+}
+
 function showToast(message, type = 'success') {
   let toast = document.getElementById('catalog-toast-notification');
   if (!toast) {
@@ -79,8 +130,8 @@ function showToast(message, type = 'success') {
   }
 
   const icon = type === 'success' 
-    ? '<i class="fa-solid fa-heart" style="color: #f87171;"></i>' 
-    : '<i class="fa-solid fa-heart-crack" style="color: #94a3b8;"></i>';
+    ? '<i class="fa-solid fa-check-circle" style="color: #60a5fa;"></i>' 
+    : '<i class="fa-solid fa-circle-exclamation" style="color: #f87171;"></i>';
 
   toast.innerHTML = `${icon} <span>${message}</span>`;
   toast.style.opacity = '1';
@@ -108,6 +159,7 @@ function bookCardHTML(b, i) {
   const formato = b.formatoLibro || 'Digital';
   const anio = b.fechaPublicacion ? new Date(b.fechaPublicacion).getFullYear() : '';
   const portada = b.portadaUrl;
+  const bookId = b.id || b.idLibro || b.id_libro || '';
 
   const rawData = JSON.stringify(b).replace(/'/g, "&apos;");
 
@@ -119,7 +171,7 @@ function bookCardHTML(b, i) {
 
   return `
     <div class="book-card" data-book='${rawData}'>
-      <button class="btn-favorite" data-id="${b.id || ''}" aria-label="Agregar a favoritos" style="transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+      <button class="btn-favorite" data-id="${bookId}" aria-label="Agregar a favoritos" style="transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
         <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="transition: all 0.2s ease;">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
@@ -136,6 +188,11 @@ function bookCardHTML(b, i) {
         <div class="footer-info">
           <span>${editorial}</span>
           ${anio ? `<span>• ${anio}</span>` : ''}
+        </div>
+        <div class="card-actions" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #f1f5f9; display: flex; gap: 8px;">
+          <button class="btn-request-loan" data-id="${bookId}" data-titulo="${titulo.replace(/'/g, "&apos;")}" style="width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; font-size: 0.775rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s ease;">
+            <i class="fa-solid fa-bookmark"></i> Prestar
+          </button>
         </div>
       </div>
     </div>`;
@@ -494,6 +551,40 @@ export function initCatalog() {
   });
 
   bookGrid.addEventListener('click', async (e) => {
+    // 1. EVENTO DE PRESTAR LIBRO DESDE LA TARJETA
+    const loanBtn = e.target.closest('.btn-request-loan');
+    if (loanBtn) {
+      e.stopPropagation();
+      const bookId = loanBtn.getAttribute('data-id');
+      const bookTitle = loanBtn.getAttribute('data-titulo') || 'Libro';
+
+      if (!bookId || loanBtn.disabled) return;
+
+      const originalHTML = loanBtn.innerHTML;
+      loanBtn.disabled = true;
+      loanBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Solicitando...`;
+
+      try {
+        await createLoan(bookId);
+        triggerLoanVisualFeedback(loanBtn);
+        loanBtn.innerHTML = `<i class="fa-solid fa-check"></i> En Préstamo`;
+        loanBtn.style.background = '#10b981';
+        loanBtn.style.borderColor = '#059669';
+        loanBtn.style.color = '#ffffff';
+
+        showToast(`¡Préstamo registrado para "${bookTitle}"!`, 'success');
+        if (typeof hablarTexto === 'function') {
+          hablarTexto(`Préstamo registrado para ${bookTitle}. Puedes verlo en tus préstamos.`);
+        }
+      } catch (err) {
+        loanBtn.disabled = false;
+        loanBtn.innerHTML = originalHTML;
+        showToast(err.message || 'No se pudo registrar el préstamo', 'danger');
+      }
+      return;
+    }
+
+    // 2. EVENTO DE FAVORITOS
     const favoriteBtn = e.target.closest('.btn-favorite');
     if (favoriteBtn) {
       e.stopPropagation();
@@ -554,6 +645,7 @@ export function initCatalog() {
       return;
     }
 
+    // 3. ABRIR MODAL AL HACER CLIC EN LA TARJETA
     const card = e.target.closest('.book-card');
     if (!card) return;
 
@@ -583,7 +675,7 @@ export function initCatalog() {
 }
 
 /**
- * Muestra el modal con la información completa del libro.
+ * Muestra el modal con la información completa del libro y botón de Préstamo.
  */
 export function openBookModal(book) {
   let modal = document.getElementById('bookModal');
@@ -625,6 +717,7 @@ export function openBookModal(book) {
   const descripcion = book.descripcion || 'No hay una descripción detallada disponible para este libro.';
   const idioma = book.idioma ? `<p class="modal-idioma" style="margin: 6px 0; color: #4b5563;"><strong>Idioma:</strong> ${book.idioma}</p>` : '';
   const pais = book.paisPublicacion ? `<p class="modal-pais" style="margin: 6px 0; color: #4b5563;"><strong>País de publicación:</strong> ${book.paisPublicacion}</p>` : '';
+  const idLibro = book.id || book.idLibro || book.id_libro || '';
 
   const portadaImgUrl = book.portadaUrl;
   const portada = portadaImgUrl 
@@ -655,27 +748,22 @@ export function openBookModal(book) {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <strong style="font-size: 0.95rem; color: #1e293b;">Lector Digital:</strong>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-              <!-- Botón Escuchar Sinopsis -->
               <button id="btnModalEscucharSinopsis" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <i class="fa-solid fa-volume-high" style="font-size: 0.8rem; color: #16a34a;"></i> Escuchar Sinopsis
               </button>
               
-              <!-- Botón Leer PDF por Voz -->
               <button id="btnModalLeerPdf" style="background: #f5f3ff; color: #6b21a8; border: 1px solid #ddd6fe; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <i class="fa-solid fa-headphones" style="font-size: 0.8rem; color: #9333ea;"></i> Leer PDF por Voz
               </button>
 
-              <!-- Botón Activar Comandos de Voz -->
               <button id="btnModalComandoVoz" style="background: #fefce8; color: #a16207; border: 1px solid #fef08a; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;" title="Di 'sinopsis', 'leer pdf' o 'detener'">
                 <i class="fa-solid fa-microphone" style="font-size: 0.8rem; color: #ca8a04;"></i> Comando por Voz
               </button>
 
-              <!-- Botón Detener Audio -->
               <button id="btnModalDetenerAudio" style="display: none; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-square" style="font-size: 0.75rem; color: #dc2626;"></i> Detener
               </button>
 
-              <!-- Pantalla completa -->
               <button id="btnFullscreenReader" style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <i class="fa-solid fa-expand" style="font-size: 0.8rem; color: #64748b;"></i> Pantalla completa
               </button>
@@ -746,6 +834,13 @@ export function openBookModal(book) {
           <strong style="color: #111827; display: block; margin-bottom: 4px;">Descripción:</strong>
           <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">${descripcion}</p>
         </div>
+
+        <!-- BOTÓN DE SOLICITAR PRÉSTAMO EN EL MODAL -->
+        <div style="margin-top: 18px; display: flex; gap: 10px;">
+          <button id="btnModalSolicitarPrestamo" data-id="${idLibro}" data-titulo="${titulo.replace(/'/g, "&apos;")}" style="padding: 9px 18px; border-radius: 8px; border: none; background: #2563eb; color: #ffffff; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);">
+            <i class="fa-solid fa-bookmark"></i> Solicitar Préstamo
+          </button>
+        </div>
       </div>
     </div>
     ${visualizadorHTML}
@@ -760,7 +855,37 @@ export function openBookModal(book) {
 
   modal.style.display = 'flex';
 
-  const idLibro = book.id || book.idLibro || book.id_libro;
+  // Listener para el botón de préstamo dentro del modal
+  const btnModalPrestamo = modal.querySelector('#btnModalSolicitarPrestamo');
+  if (btnModalPrestamo) {
+    btnModalPrestamo.addEventListener('click', async () => {
+      const bId = btnModalPrestamo.getAttribute('data-id');
+      const bTitle = btnModalPrestamo.getAttribute('data-titulo') || 'Libro';
+
+      if (!bId || btnModalPrestamo.disabled) return;
+
+      const originalHtml = btnModalPrestamo.innerHTML;
+      btnModalPrestamo.disabled = true;
+      btnModalPrestamo.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Solicitando...`;
+
+      try {
+        await createLoan(bId);
+        triggerLoanVisualFeedback(btnModalPrestamo);
+        btnModalPrestamo.innerHTML = `<i class="fa-solid fa-check"></i> Préstamo Registrado`;
+        btnModalPrestamo.style.background = '#10b981';
+
+        showToast(`¡Préstamo registrado para "${bTitle}"!`, 'success');
+        if (typeof hablarTexto === 'function') {
+          hablarTexto(`Préstamo registrado para ${bTitle}. Puedes verlo en tus préstamos.`);
+        }
+      } catch (err) {
+        btnModalPrestamo.disabled = false;
+        btnModalPrestamo.innerHTML = originalHtml;
+        showToast(err.message || 'No se pudo registrar el préstamo', 'danger');
+      }
+    });
+  }
+
   if (idLibro) {
     fetchCategoriasPorLibro(idLibro).then(categorias => {
       const container = modal.querySelector('#modalCategoriesContainer');
@@ -909,7 +1034,6 @@ export function openBookModal(book) {
     });
   }
 
-  // --- RECONOCIMIENTO DE COMANDOS DE VOZ ---
   if (btnComandoVoz) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -947,7 +1071,6 @@ export function openBookModal(book) {
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript.toLowerCase().trim();
-        console.log('Comando de voz detectado:', transcript);
 
         if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-comment" style="color: #ca8a04;"></i> <span>Comando: "${transcript}"</span>`;
 

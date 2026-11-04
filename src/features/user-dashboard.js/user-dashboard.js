@@ -3,6 +3,7 @@ import { initCatalog } from '../catalog/catalog.component.js';
 import { fetchPerfilDatosBasicos, updateProfilePhoto } from '../perfil/perfilApi.js'; 
 import { updateUser } from './user-dashboard-api.js';
 import { loadFavoritesView } from '../favoritos/favorites.component.js';
+import { fetchUserLoans, returnLoan } from '../prestamos/prestamos.api.js';
 
 const userIdActual = localStorage.getItem('userId') || 1; 
 
@@ -96,7 +97,6 @@ function initUserVoiceNavigation() {
   recognition.interimResults = false;
   recognitionInstance = recognition;
 
-  // Inyectar botón estilizado en el sidebar si no existe
   let btnVoice = document.getElementById('btnVoiceNavUser');
   if (!btnVoice) {
     const sidebarFooter = document.querySelector('.sidebar-footer');
@@ -147,7 +147,6 @@ function initUserVoiceNavigation() {
     if (confidence > 0 && confidence < 0.65) return;
     if (transcript.length < 2) return;
 
-    // 1. Desactivar micrófono
     if (transcript.includes('apagar microfono') || transcript.includes('desactivar microfono') || transcript.includes('dejar de escuchar')) {
       isListeningGlobal = false;
       restablecerBotonVoz();
@@ -156,7 +155,6 @@ function initUserVoiceNavigation() {
       return;
     }
 
-    // 2. Cerrar sesión
     if (transcript.includes('cerrar sesion') || transcript.includes('salir de la cuenta') || transcript.includes('salir')) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('userId');
@@ -165,14 +163,12 @@ function initUserVoiceNavigation() {
       return;
     }
 
-    // 3. ¿Dónde estoy?
     if (transcript.includes('donde estoy') || transcript.includes('seccion actual')) {
       const nombresMap = { 'catalogo': 'el Catálogo principal', 'prestamos': 'tus Préstamos activos', 'favoritos': 'tus Libros Favoritos', 'perfil': 'tu Perfil de usuario' };
       hablarTexto(`Estás ubicado en ${nombresMap[currentSectionName] || 'el catálogo'}.`);
       return;
     }
 
-    // 4. Cambios de sección por voz
     const textoNavegacion = transcript
       .replace(/^ir a la seccion de\s+/i, '')
       .replace(/^ir a la seccion\s+/i, '')
@@ -399,9 +395,9 @@ async function ejecutarCambioSeccion(seccion) {
                 <div class="carousel-slide" style="background-image: url('https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80');">
                   <div class="carousel-slide-overlay"></div>
                   <div class="carousel-slide-content">
-                    <span class="carousel-slide-tag">Préstamos & Devoluciones</span>
-                    <h2 class="carousel-slide-title">Gestión de Préstamos Activos</h2>
-                    <p class="carousel-slide-desc">Revisa la fecha de vencimiento, renovaciones y el estado de tus libros prestados en tiempo real.</p>
+                    <span class="carousel-slide-tag">Préstamos Activos</span>
+                    <h2 class="carousel-slide-title">Tus Libros Prestados</h2>
+                    <p class="carousel-slide-desc">Consulta la fecha de vencimiento y accede directamente al archivo PDF de tus publicaciones.</p>
                   </div>
                 </div>
 
@@ -426,16 +422,15 @@ async function ejecutarCambioSeccion(seccion) {
               </div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 48px 24px; text-align: center; max-width: 600px; margin: 20px auto; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
-                <div style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
-                    <i class="fa-solid fa-bookmark"></i>
-                </div>
-                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Tus Préstamos Activos</h3>
-                <p style="color: #64748b; margin: 8px 0 0 0; font-size: 0.875rem; line-height: 1.5;">Actualmente no tienes préstamos pendientes de devolución. Cuando solicites un libro impreso o digital, aparecerá listado aquí.</p>
+            <div id="loansListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+              <p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 30px;">
+                <i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i> Cargando tus préstamos...
+              </p>
             </div>
         `;
 
         initUserHeroCarousel('loansHeroCarousel', 'loansCarouselTrack', 'loansPrevBtn', 'loansNextBtn');
+        await loadAndRenderUserLoansView();
         await actualizarDatosSidebarYHeader();
     } 
     else if (seccion === 'favoritos') {
@@ -586,6 +581,80 @@ async function ejecutarCambioSeccion(seccion) {
             `;
         }
     }
+}
+
+/**
+ * Renderiza dinámicamente los préstamos del usuario obtenidos del backend
+ */
+async function loadAndRenderUserLoansView() {
+  const grid = document.getElementById('loansListGrid');
+  if (!grid) return;
+
+  try {
+    const response = await fetchUserLoans(userIdActual);
+    const prestamos = response.content || (Array.isArray(response) ? response : []);
+
+    if (prestamos.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 48px 24px; text-align: center; max-width: 580px; margin: 20px auto; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+            <i class="fa-solid fa-bookmark"></i>
+          </div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">No tienes préstamos activos</h3>
+          <p style="color: #64748b; margin: 8px 0 0 0; font-size: 0.875rem; line-height: 1.5;">Explora el catálogo para solicitar libros y gestionarlos desde aquí.</p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = prestamos.map(p => {
+      const idPrestamo = p.id_prestamo || p.id;
+      const titulo = p.titulo || (p.libro && p.libro.titulo) || 'Libro sin título';
+      const editorial = p.editorial || (p.libro && p.libro.editorial) || 'Sin editorial';
+      const portada = p.portadaUrl || (p.libro && p.libro.portadaUrl) || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=450&fit=crop';
+      const fechaVenc = p.fecha_venciimiento || p.fechaVencimiento || 'Sin fecha registrada';
+      const horaVenc = p.hora_vencimiento ? `a las ${p.hora_vencimiento}` : '';
+
+      return `
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
+          <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <img src="${portada}" alt="${titulo}" style="width: 72px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; flex-shrink: 0;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 6px; width: fit-content;">PRÉSTAMO ACTIVO</span>
+              <h4 style="margin: 4px 0 2px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.3;">${titulo}</h4>
+              <p style="margin: 0; font-size: 0.775rem; color: #64748b;">${editorial}</p>
+              <p style="margin: 4px 0 0 0; font-size: 0.775rem; color: #1e293b;"><i class="fa-regular fa-calendar" style="margin-right: 4px; color: #2563eb;"></i> Vence: <strong>${fechaVenc} ${horaVenc}</strong></p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+            <button class="btn-return-loan" data-id="${idPrestamo}" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease;">
+              Devolver libro
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.btn-return-loan').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const loanId = btn.getAttribute('data-id');
+        if (confirm('¿Deseas devolver este libro?')) {
+          try {
+            await returnLoan(loanId);
+            hablarTexto('Préstamo devuelto correctamente.');
+            await loadAndRenderUserLoansView();
+          } catch (err) {
+            alert(err.message || 'No se pudo realizar la devolución.');
+          }
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Error al renderizar préstamos:', error);
+    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 20px;">No se pudieron obtener tus préstamos.</p>`;
+  }
 }
 
 function setupUserEditProfileEvents(perfilActual) {
