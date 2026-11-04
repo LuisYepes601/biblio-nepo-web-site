@@ -6,10 +6,226 @@ import { loadFavoritesView } from '../favoritos/favorites.component.js';
 
 const userIdActual = localStorage.getItem('userId') || 1; 
 
+// Variables globales para Control de Voz
+let recognitionInstance = null;
+let isListeningGlobal = false;
+let currentSectionName = 'catalogo';
+let isSpeakingTTS = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     setupLogoutListener();
+    initUserVoiceNavigation();
     cambiarSeccion('catalogo');
 });
+
+/**
+ * Obtener voz en español disponible
+ */
+function obtenerVozEspanol() {
+  if (!('speechSynthesis' in window)) return null;
+  const voces = window.speechSynthesis.getVoices();
+  return voces.find(v => v.lang.startsWith('es') || v.lang.includes('es-ES') || v.lang.includes('es-MX')) || voces[0] || null;
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
+/**
+ * Sintetiza texto a voz
+ */
+export function hablarTexto(mensaje, forzar = false) {
+  if (!('speechSynthesis' in window)) return;
+  if (!isListeningGlobal && !forzar) return;
+
+  isSpeakingTTS = true;
+
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+  }
+
+  window.speechSynthesis.cancel();
+
+  if (recognitionInstance && isListeningGlobal) {
+    try { recognitionInstance.abort(); } catch (e) {}
+  }
+
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(mensaje);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.95; 
+    utterance.pitch = 1;
+
+    const voz = obtenerVozEspanol();
+    if (voz) utterance.voice = voz;
+
+    const reactivarMicrofono = () => {
+      setTimeout(() => {
+        isSpeakingTTS = false;
+        if (recognitionInstance && isListeningGlobal) {
+          try { recognitionInstance.start(); } catch (e) {}
+        }
+      }, 500);
+    };
+
+    utterance.onend = reactivarMicrofono;
+    utterance.onerror = () => reactivarMicrofono();
+
+    window.currentUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, 80);
+}
+
+function normalizarTexto(texto) {
+  if (!texto) return '';
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+/**
+ * Inicializador de Navegación por Voz para Usuario
+ */
+function initUserVoiceNavigation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognitionInstance = recognition;
+
+  // Inyectar botón estilizado en el sidebar si no existe
+  let btnVoice = document.getElementById('btnVoiceNavUser');
+  if (!btnVoice) {
+    const sidebarFooter = document.querySelector('.sidebar-footer');
+    if (sidebarFooter) {
+      btnVoice = document.createElement('button');
+      btnVoice.id = 'btnVoiceNavUser';
+      btnVoice.className = 'btn-sidebar-voice';
+      btnVoice.innerHTML = `<i class="fa-solid fa-microphone"></i> <span>Control por Voz</span>`;
+      sidebarFooter.insertBefore(btnVoice, sidebarFooter.firstChild);
+    }
+  }
+
+  const restablecerBotonVoz = () => {
+    if (btnVoice) {
+      btnVoice.classList.remove('listening');
+      btnVoice.innerHTML = `<i class="fa-solid fa-microphone"></i> <span>Control por Voz</span>`;
+    }
+  };
+
+  const activarBotonVoz = () => {
+    if (btnVoice) {
+      btnVoice.classList.add('listening');
+      btnVoice.innerHTML = `<i class="fa-solid fa-microphone-lines fa-bounce"></i> <span>Escuchando...</span>`;
+    }
+  };
+
+  const comandosMap = {
+    'catalogo': 'catalogo', 'explorar catalogo': 'catalogo', 'libros': 'catalogo', 'inicio': 'catalogo',
+    'prestamos': 'prestamos', 'mis prestamos': 'prestamos', 'libros prestados': 'prestamos',
+    'favoritos': 'favoritos', 'mis favoritos': 'favoritos', 'guardados': 'favoritos',
+    'perfil': 'perfil', 'mi perfil': 'perfil', 'mi cuenta': 'perfil', 'mis datos': 'perfil'
+  };
+
+  recognition.onstart = () => {
+    isListeningGlobal = true;
+    activarBotonVoz();
+  };
+
+  recognition.onresult = (event) => {
+    if (isSpeakingTTS || (window.speechSynthesis && window.speechSynthesis.speaking)) return;
+
+    const lastResultIndex = event.results.length - 1;
+    const resultObj = event.results[lastResultIndex][0];
+    const transcriptOriginal = resultObj.transcript.trim(); 
+    const confidence = resultObj.confidence;
+    const transcript = normalizarTexto(transcriptOriginal);
+
+    if (confidence > 0 && confidence < 0.65) return;
+    if (transcript.length < 2) return;
+
+    // 1. Desactivar micrófono
+    if (transcript.includes('apagar microfono') || transcript.includes('desactivar microfono') || transcript.includes('dejar de escuchar')) {
+      isListeningGlobal = false;
+      restablecerBotonVoz();
+      hablarTexto('Control por voz desactivado.', true);
+      try { recognition.stop(); } catch(e) {}
+      return;
+    }
+
+    // 2. Cerrar sesión
+    if (transcript.includes('cerrar sesion') || transcript.includes('salir de la cuenta') || transcript.includes('salir')) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userId');
+      hablarTexto('Cerrando sesión.', true);
+      window.location.href = 'index.html';
+      return;
+    }
+
+    // 3. ¿Dónde estoy?
+    if (transcript.includes('donde estoy') || transcript.includes('seccion actual')) {
+      const nombresMap = { 'catalogo': 'el Catálogo principal', 'prestamos': 'tus Préstamos activos', 'favoritos': 'tus Libros Favoritos', 'perfil': 'tu Perfil de usuario' };
+      hablarTexto(`Estás ubicado en ${nombresMap[currentSectionName] || 'el catálogo'}.`);
+      return;
+    }
+
+    // 4. Cambios de sección por voz
+    const textoNavegacion = transcript
+      .replace(/^ir a la seccion de\s+/i, '')
+      .replace(/^ir a la seccion\s+/i, '')
+      .replace(/^ir a\s+/i, '')
+      .replace(/^ir al\s+/i, '')
+      .replace(/^ver\s+/i, '')
+      .replace(/^abrir\s+/i, '')
+      .trim();
+
+    for (const [key, seccion] of Object.entries(comandosMap)) {
+      if (textoNavegacion === key || transcript === key || transcript.includes(key)) {
+        window.cambiarSeccion(seccion);
+        return;
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      console.warn(`Error de voz en usuario: ${event.error}`);
+    }
+  };
+
+  recognition.onend = () => {
+    if (!isListeningGlobal) {
+      restablecerBotonVoz();
+      return;
+    }
+
+    if (isSpeakingTTS || (window.speechSynthesis && window.speechSynthesis.speaking)) return;
+
+    if (isListeningGlobal) {
+      setTimeout(() => {
+        try { recognition.start(); } catch(e) {}
+      }, 300); 
+    }
+  };
+
+  if (btnVoice) {
+    btnVoice.addEventListener('click', () => {
+      if (isListeningGlobal) {
+        isListeningGlobal = false;
+        restablecerBotonVoz();
+        hablarTexto('Control por voz desactivado.', true);
+        try { recognition.stop(); } catch(e) {}
+      } else {
+        isListeningGlobal = true;
+        try { recognition.start(); } catch(e) {}
+        hablarTexto('Control por voz activado. Puedes decir: ir a favoritos, mis préstamos, catálogo o mi perfil.');
+      }
+    });
+  }
+}
 
 /**
  * Control del evento de salida / Cerrar Sesión
@@ -17,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupLogoutListener() {
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('#btnLogoutUser, #btnLogout, .btn-sidebar-logout');
-        if (btn) {
+        if (btn && btn.id !== 'btnVoiceNavUser') {
             e.preventDefault();
             localStorage.removeItem('authToken');
             localStorage.removeItem('userId');
@@ -34,11 +250,9 @@ async function actualizarDatosSidebarYHeader(datosPerfil = null) {
         const perfil = datosPerfil || await fetchPerfilDatosBasicos(userIdActual);
         const nombreCompleto = `${perfil.nombre || ''} ${perfil.primerApellido || ''}`.trim() || 'Usuario';
 
-        // 1. Indicador en Header
         const userIndicator = document.getElementById('usuarioIndicador') || document.querySelector('.user-profile-badge');
         if (userIndicator) userIndicator.textContent = nombreCompleto;
 
-        // 2. Elementos del Pie de la Sidebar
         const sidebarName = document.getElementById('sidebarUserName') || document.querySelector('.sidebar-user-name');
         if (sidebarName) sidebarName.textContent = nombreCompleto;
 
@@ -120,11 +334,20 @@ async function ejecutarCambioSeccion(seccion) {
     if (!contenedor) return;
     contenedor.innerHTML = ''; 
 
+    currentSectionName = seccion;
+
+    const nombresLectura = {
+      'catalogo': 'Catálogo general',
+      'prestamos': 'Mis Préstamos',
+      'favoritos': 'Mis Favoritos',
+      'perfil': 'Mi Perfil'
+    };
+    hablarTexto(`Sección ${nombresLectura[seccion] || seccion}`);
+
     if (seccion === 'catalogo') {
         if (tituloSeccion) tituloSeccion.textContent = 'Explorar Catálogo';
         
         contenedor.innerHTML = `
-            <!-- CARRUSEL HERO AUTOMÁTICO DE CATÁLOGO -->
             <div class="carousel-hero-container" id="userHeroCarousel">
               <div class="carousel-track" id="userCarouselTrack">
                 
@@ -170,7 +393,6 @@ async function ejecutarCambioSeccion(seccion) {
         if (tituloSeccion) tituloSeccion.textContent = 'Mis Préstamos';
         
         contenedor.innerHTML = `
-            <!-- CARRUSEL HERO DE PRÉSTAMOS -->
             <div class="carousel-hero-container" id="loansHeroCarousel">
               <div class="carousel-track" id="loansCarouselTrack">
                 
@@ -472,15 +694,12 @@ function setupProfilePhotoUpload() {
 window.cambiarSeccion = function(seccion, event) {
     if (event) event.preventDefault();
     
-    // Remueve la clase active de todos los enlaces de la barra lateral
     const enlacesMenu = document.querySelectorAll('aside nav a, .sidebar-nav a, .sidebar-nav-list a, .sidebar-nav-item a');
     enlacesMenu.forEach(el => el.classList.remove('active'));
     
-    // Si fue desencadenado por un clic
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     } else {
-        // Si fue llamado por código, busca el enlace correspondiente en la Sidebar
         const enlaceCorrespondiente = document.querySelector(`a[onclick*="'${seccion}'"]`) || document.querySelector(`a[href="#${seccion}"]`);
         if (enlaceCorrespondiente) {
             enlaceCorrespondiente.classList.add('active');

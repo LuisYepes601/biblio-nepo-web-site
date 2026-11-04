@@ -21,6 +21,40 @@ export async function loadBookTypesView() {
         </button>
       </div>
 
+      <!-- CARRUSEL HERO -->
+      <div class="carousel-hero-container" id="typesHeroCarousel" style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 24px; border: 1px solid #e2e8f0; background: #0f172a;">
+        <div class="carousel-track" id="typesCarouselTrack" style="display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 100%;">
+          
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Clasificación Literaria</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Tipos de Libro</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Organiza las publicaciones según su naturaleza editorial, formato técnico o estructura académica.</p>
+            </div>
+          </div>
+
+          <div class="carousel-slide" style="flex: 0 0 100%; min-width: 100%; position: relative; min-height: 200px; display: flex; align-items: center; padding: 32px 40px; background-image: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; box-sizing: border-box;">
+            <div class="carousel-slide-overlay" style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.5) 70%, transparent 100%); z-index: 1;"></div>
+            <div class="carousel-slide-content" style="position: relative; z-index: 2; max-width: 500px; color: #ffffff;">
+              <span class="carousel-slide-tag" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a5b4fc; margin-bottom: 6px; display: inline-block;">Estructuración de Acervo</span>
+              <h2 class="carousel-slide-title" style="font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.25;">Gestión de Categorías Técnicas</h2>
+              <p class="carousel-slide-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 0; line-height: 1.45;">Clasifica obras generales, monografías, enciclopedias y manuales dentro del catálogo.</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="carousel-controls" style="position: absolute; bottom: 16px; right: 20px; z-index: 3; display: flex; align-items: center; gap: 8px;">
+          <div class="carousel-dots" style="display: flex; gap: 6px; margin-right: 6px;">
+            <span class="carousel-dot active" style="width: 20px; height: 7px; border-radius: 10px; background: #ffffff; cursor: pointer;"></span>
+            <span class="carousel-dot" style="width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); cursor: pointer;"></span>
+          </div>
+          <button class="carousel-arrow" id="typesPrevBtn" title="Anterior" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="carousel-arrow" id="typesNextBtn" title="Siguiente" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem;"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+
       <section class="types-module-container">
         <div class="types-header">
           <div>
@@ -99,8 +133,71 @@ export async function loadBookTypesView() {
     navigateToView('dashboard');
   });
 
+  initTypesCarousel();
   initTypeListeners();
   await loadAndRenderTypes();
+}
+
+function initTypesCarousel() {
+  const track = document.getElementById('typesCarouselTrack');
+  const slides = track ? track.querySelectorAll('.carousel-slide') : [];
+  const dots = document.querySelectorAll('#typesHeroCarousel .carousel-dot');
+  const prevBtn = document.getElementById('typesPrevBtn');
+  const nextBtn = document.getElementById('typesNextBtn');
+  const container = document.getElementById('typesHeroCarousel');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+
+  function updateCarousel(index) {
+    if (index < 0) currentIndex = slides.length - 1;
+    else if (index >= slides.length) currentIndex = 0;
+    else currentIndex = index;
+
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    dots.forEach((dot, idx) => {
+      if (idx === currentIndex) {
+        dot.style.width = '20px';
+        dot.style.borderRadius = '10px';
+        dot.style.background = '#ffffff';
+      } else {
+        dot.style.width = '7px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = 'rgba(255, 255, 255, 0.4)';
+      }
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      updateCarousel(currentIndex + 1);
+    }, 3500);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { updateCarousel(currentIndex - 1); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { updateCarousel(currentIndex + 1); startAutoplay(); });
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => { updateCarousel(idx); startAutoplay(); });
+  });
+
+  if (container) {
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+  }
+
+  startAutoplay();
 }
 
 async function loadAndRenderTypes(nombre = '', page = 0, size = currentLimit) {
@@ -223,7 +320,6 @@ function initTypeListeners() {
 
       if (!submitBtn) return;
 
-      // 1. ESTADO DE CARGA: Deshabilitar botón y mostrar Spinner
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
       submitBtn.style.opacity = '0.75';
@@ -240,7 +336,6 @@ function initTypeListeners() {
       } catch (err) {
         alert(err.message || "Ocurrió un error al guardar el tipo de libro.");
       } finally {
-        // 2. RESTAURAR BOTÓN
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
         submitBtn.style.cursor = 'pointer';
