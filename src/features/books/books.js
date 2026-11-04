@@ -1,7 +1,7 @@
 import { fetchBooks, createBook, fetchBookDetails, fetchFormatosLibro } from './books.api.js';
 import { fetchIdiomas, fetchCategorias, fetchGeneros, fetchTiposLibro, fetchCategoriasPorLibro } from '../catalog/catalog.api.js';
 import { fetchAuthors } from '../autors/authors.api.js';
-import { navigateToView } from '../admin/admin.navigation.js';
+import { navigateToView, hablarTexto } from '../admin/admin.navigation.js';
 import { addFavoriteApi, removeFavoriteApi } from '../favoritos/favorite-api.js';
 
 let currentPage = 0;
@@ -11,6 +11,91 @@ let currentSearchIdioma = '';
 let currentLimit = getDefaultLimit();
 let currentBooksList = [];
 
+// Control global de la lectura de PDF por voz
+let isReadingPdf = false;
+let pdfReadingCancelled = false;
+
+function detenerLecturaVoz() {
+  pdfReadingCancelled = true;
+  isReadingPdf = false;
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+async function leerPdfLibro(pdfUrl, updateStatusFn) {
+  if (!pdfUrl) {
+    hablarTexto('Este libro no posee un archivo PDF adjunto para lectura.', true);
+    return;
+  }
+
+  // 1. Cargar PDF.js dinámicamente desde CDN si no está cargado
+  if (!window.pdfjsLib) {
+    try {
+      updateStatusFn('Cargando lector de PDF...');
+      hablarTexto('Cargando la herramienta de lectura de PDF, por favor espere.', true);
+      
+      const pdfjsModule = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs');
+      window.pdfjsLib = pdfjsModule;
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
+    } catch (e) {
+      console.error('Error al cargar la librería PDF.js:', e);
+      updateStatusFn('Error al cargar lector PDF');
+      hablarTexto('No se pudo cargar la herramienta de lectura de PDF.', true);
+      return;
+    }
+  }
+
+  // 2. Extraer texto página por página y dictarlo
+  try {
+    isReadingPdf = true;
+    pdfReadingCancelled = false;
+    updateStatusFn('Procesando archivo PDF...');
+
+    const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
+    const pdfDoc = await loadingTask.promise;
+    const totalPages = pdfDoc.numPages;
+
+    hablarTexto(`El documento contiene ${totalPages} páginas. Iniciando lectura.`, true);
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      if (pdfReadingCancelled) break;
+
+      updateStatusFn(`Leyendo página ${pageNum} de ${totalPages}...`);
+      const page = await pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+      if (pageText.length > 0) {
+        hablarTexto(`Página ${pageNum}. ${pageText}`, true);
+
+        // Esperar a que termine de dictarse la página antes de continuar a la siguiente
+        await new Promise((resolve) => {
+          const interval = setInterval(() => {
+            if (!window.speechSynthesis.speaking || pdfReadingCancelled) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 300);
+        });
+      }
+    }
+
+    if (!pdfReadingCancelled) {
+      updateStatusFn('Lectura finalizada');
+      hablarTexto('Ha finalizado la lectura completa del libro.', true);
+    } else {
+      updateStatusFn('Lectura detenida');
+    }
+  } catch (error) {
+    console.error('Error durante la lectura del PDF:', error);
+    updateStatusFn('Error de lectura');
+    hablarTexto('Ocurrió un error al procesar el texto del PDF.', true);
+  } finally {
+    isReadingPdf = false;
+  }
+}
+
 /**
  * Efecto visual de Corazón Flotante y Resplandor en la tarjeta
  */
@@ -18,7 +103,6 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
   const card = btn.closest('.book-card-item') || btn.closest('.author-card');
   const rect = btn.getBoundingClientRect();
 
-  // 1. Crear el corazón flotante animado en la posición del botón
   const floatingHeart = document.createElement('div');
   floatingHeart.innerHTML = isAdding ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-heart-crack"></i>';
   floatingHeart.style.cssText = `
@@ -44,7 +128,6 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
     floatingHeart.remove();
   }, 780);
 
-  // 2. Resplandor / Destello temporal en la tarjeta completa
   if (card) {
     const originalShadow = card.style.boxShadow;
     const originalTransform = card.style.transform;
@@ -63,7 +146,7 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
 }
 
 /**
- * Notificación Toast flotante para dar feedback inmediato al usuario
+ * Notificación Toast flotante
  */
 function showToast(message, type = 'success') {
   let toast = document.getElementById('books-toast-notification');
@@ -114,6 +197,7 @@ function getDefaultLimit() {
 }
 
 export async function loadBooksView() {
+  detenerLecturaVoz();
   const container = document.getElementById('admin-content-container') || document.getElementById('main-content');
   if (!container) return;
 
@@ -130,14 +214,12 @@ export async function loadBooksView() {
   container.innerHTML = `
     <div class="books-page-wrapper">
       
-      <!-- BARRA SUPERIOR CON BOTÓN REGRESAR -->
       <div class="books-top-bar" style="margin-bottom: 16px;">
         <button class="btn-back-dashboard" id="btnBackToDashboard" style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e2e8f0; color: #334155; padding: 8px 14px; border-radius: 8px; font-size: 0.825rem; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s;">
           <i class="fa-solid fa-arrow-left"></i> Regresar al Dashboard
         </button>
       </div>
 
-      <!-- CARRUSEL HERO AUTOMÁTICO DE LIBROS -->
       <div class="carousel-hero-container" id="booksHeroCarousel" style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 28px; border: 1px solid #e2e8f0; background: #0f172a;">
         <div class="carousel-track" id="booksCarouselTrack" style="display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 100%;">
           
@@ -171,7 +253,6 @@ export async function loadBooksView() {
         </div>
       </div>
 
-      <!-- MÓDULO DE LIBROS -->
       <section class="authors-module-container" style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
         <div class="authors-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
@@ -183,7 +264,6 @@ export async function loadBooksView() {
           </button>
         </div>
 
-        <!-- Barra de Filtros y Búsqueda -->
         <div class="authors-search-bars" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
           <input type="text" id="searchBookTitle" placeholder="Buscar por título..." 
                  style="flex: 1; min-width: 180px; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem; background: white;">
@@ -214,7 +294,6 @@ export async function loadBooksView() {
 
     </div>
 
-    <!-- Modal General para Libros -->
     <div id="bookModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; padding: 20px;">
       <div class="modal-content" style="background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 640px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
@@ -226,7 +305,6 @@ export async function loadBooksView() {
     </div>
   `;
 
-  // Evento del botón de regreso
   const btnBack = document.getElementById('btnBackToDashboard');
   if (btnBack) {
     btnBack.addEventListener('click', () => {
@@ -236,9 +314,7 @@ export async function loadBooksView() {
     });
   }
 
-  // Inicializar carrusel hero
   initBooksCarousel();
-
   await populateLanguageFilter();
   initBookListeners();
   await loadAndRenderBooks(currentSearchNombre, currentSearchAutor, currentSearchIdioma, 0, currentLimit);
@@ -378,7 +454,6 @@ function renderBooks(books) {
 
   grid.innerHTML = booksHtml;
 
-  // Escuchador para botones de favoritos con ESTADO DE CARGA y EFECTO VISUAL
   grid.querySelectorAll('.btn-favorite').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -389,7 +464,6 @@ function renderBooks(books) {
       const esFavorito = btn.classList.contains('is-favorite');
       const originalHTML = btn.innerHTML;
 
-      // 1. ESTADO DE CARGA VISIBLE INMEDIATO (Spinner animado)
       btn.disabled = true;
       btn.style.opacity = '0.85';
       btn.style.transform = 'scale(0.95)';
@@ -398,8 +472,6 @@ function renderBooks(books) {
       try {
         if (!esFavorito) {
           await addFavoriteApi(bookId);
-
-          // 2. ÉXITO AL GUARDAR: Corazón rojo relleno
           btn.classList.add('is-favorite');
           btn.style.background = '#fef2f2';
           btn.style.opacity = '1';
@@ -416,7 +488,6 @@ function renderBooks(books) {
         } else {
           await removeFavoriteApi(bookId);
 
-          // 2. ÉXITO AL QUITAR: Corazón contorno vacío
           btn.classList.remove('is-favorite');
           btn.style.background = 'rgba(255, 255, 255, 0.9)';
           btn.style.opacity = '1';
@@ -443,7 +514,6 @@ function renderBooks(books) {
     });
   });
 
-  // Escuchador para abrir detalle del libro bloqueando otros modales
   grid.querySelectorAll('.book-card-item').forEach(card => {
     card.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -455,10 +525,10 @@ function renderBooks(books) {
 }
 
 async function openBookDetailsView(bookId) {
+  detenerLecturaVoz();
   const container = document.getElementById('admin-content-container') || document.getElementById('main-content');
   if (!container) return;
 
-  // Asegurar que si hay un modal previo abierto se cierre
   const existingModal = document.getElementById('bookDetailModal') || document.querySelector('.modal-backdrop');
   if (existingModal) existingModal.style.display = 'none';
 
@@ -475,7 +545,10 @@ async function openBookDetailsView(bookId) {
     </div>
   `;
 
-  document.getElementById('backToBooksBtn')?.addEventListener('click', loadBooksView);
+  document.getElementById('backToBooksBtn')?.addEventListener('click', () => {
+    detenerLecturaVoz();
+    loadBooksView();
+  });
 
   const details = await fetchBookDetails(bookId);
 
@@ -491,7 +564,10 @@ async function openBookDetailsView(bookId) {
         <p style="margin: 0; font-weight: 600;">No se pudieron cargar los detalles de este libro.</p>
       </div>
     `;
-    document.getElementById('backToBooksBtn')?.addEventListener('click', loadBooksView);
+    document.getElementById('backToBooksBtn')?.addEventListener('click', () => {
+      detenerLecturaVoz();
+      loadBooksView();
+    });
     return;
   }
 
@@ -503,10 +579,27 @@ async function openBookDetailsView(bookId) {
   const displayName = typeof authorName === 'object' ? (authorName.nombre || 'este autor') : (authorName || 'este autor');
 
   const downloadBtnHtml = book.archivoUrl ? `
-    <a href="${book.archivoUrl}" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; width: 100%; padding: 10px 14px; border-radius: 8px; text-decoration: none; background: #6366f1; color: white; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 4px rgba(99,102,241,0.2);">
+    <a href="${book.archivoUrl}" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; width: 100%; padding: 10px 14px; border-radius: 8px; text-decoration: none; background: #6366f1; color: white; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 4px rgba(99,102,241,0.2);">
       <i class="fa-solid fa-file-pdf"></i> Visualizar / Descargar PDF
     </a>
   ` : '';
+
+  const audioControlsHtml = `
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px; width: 100%;">
+      <button id="btnEscucharSinopsis" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 8px; border: none; background: #10b981; color: white; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);">
+        <i class="fa-solid fa-volume-high"></i> Escuchar Sinopsis por Voz
+      </button>
+      ${book.archivoUrl ? `
+        <button id="btnLeerPdfCompleto" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 8px; border: none; background: #8b5cf6; color: white; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);">
+          <i class="fa-solid fa-book-open-reader"></i> Leer Contenido PDF Completo
+        </button>
+      ` : ''}
+      <button id="btnDetenerLectura" style="display: none; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ef4444; background: #fef2f2; color: #dc2626; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+        <i class="fa-solid fa-circle-stop"></i> Detener Lectura por Voz
+      </button>
+      <div id="statusLecturaPdf" style="font-size: 0.785rem; color: #64748b; text-align: center; font-weight: 500; min-height: 18px;"></div>
+    </div>
+  `;
 
   const portadaUrl = book.portadaUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=450&fit=crop';
   const formatoText = book.formatoLibro || 'Digital';
@@ -526,18 +619,16 @@ async function openBookDetailsView(bookId) {
       <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Detalles del Libro</h2>
     </div>
 
-    <!-- TARJETA PRINCIPAL EN GRID RESPONSIVE -->
     <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 28px; display: grid; grid-template-columns: minmax(220px, 260px) 1fr; gap: 28px; margin-bottom: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); align-items: start;">
       
-      <!-- COLUMNA PORTADA -->
       <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
         <div style="width: 100%; max-width: 260px; height: 350px; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
           <img src="${portadaUrl}" alt="Portada" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
         ${downloadBtnHtml}
+        ${audioControlsHtml}
       </div>
 
-      <!-- COLUMNA INFORMACIÓN -->
       <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
         <div>
           <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #4338ca; background: #e0e7ff; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 8px;">
@@ -550,7 +641,6 @@ async function openBookDetailsView(bookId) {
           </p>
         </div>
 
-        <!-- DATOS PRINCIPALES -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #f1f5f9;">
           <div>
             <span style="display: block; font-size: 0.725rem; color: #64748b; font-weight: 600;">Editorial</span>
@@ -570,7 +660,6 @@ async function openBookDetailsView(bookId) {
           </div>
         </div>
 
-        <!-- CATEGORÍAS -->
         <div style="background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #f1f5f9;">
           <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 8px;">
             <i class="fa-solid fa-tags" style="color: #6366f1; margin-right: 4px;"></i> Categorías
@@ -580,7 +669,6 @@ async function openBookDetailsView(bookId) {
           </div>
         </div>
 
-        <!-- DESCRIPCIÓN -->
         <div>
           <h4 style="margin: 0 0 6px 0; font-size: 0.875rem; color: #334155; font-weight: 700;">Sinopsis / Descripción</h4>
           <p style="margin: 0; font-size: 0.875rem; line-height: 1.6; color: #475569; background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #f1f5f9;">${descripcionText}</p>
@@ -588,7 +676,6 @@ async function openBookDetailsView(bookId) {
       </div>
     </div>
 
-    <!-- MÁS OBRAS DEL AUTOR -->
     <div style="background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
       <h3 style="margin: 0 0 4px 0; font-size: 1.05rem; color: #0f172a; font-weight: 700;">Más obras de ${displayName}</h3>
       <p style="margin: 0 0 16px 0; font-size: 0.825rem; color: #64748b;">Explora otros títulos relacionados del mismo autor.</p>
@@ -596,7 +683,46 @@ async function openBookDetailsView(bookId) {
     </div>
   `;
 
-  document.getElementById('backToBooksBtn')?.addEventListener('click', loadBooksView);
+  document.getElementById('backToBooksBtn')?.addEventListener('click', () => {
+    detenerLecturaVoz();
+    loadBooksView();
+  });
+
+  // Eventos de los botones de audio y lectura por voz
+  const btnEscucharSinopsis = document.getElementById('btnEscucharSinopsis');
+  const btnLeerPdfCompleto = document.getElementById('btnLeerPdfCompleto');
+  const btnDetenerLectura = document.getElementById('btnDetenerLectura');
+  const statusLecturaPdf = document.getElementById('statusLecturaPdf');
+
+  if (btnEscucharSinopsis) {
+    btnEscucharSinopsis.addEventListener('click', () => {
+      detenerLecturaVoz();
+      if (btnDetenerLectura) btnDetenerLectura.style.display = 'flex';
+      if (statusLecturaPdf) statusLecturaPdf.textContent = 'Leyendo sinopsis...';
+      
+      const textoLectura = `Leyendo información del libro. Título: ${tituloText}. Autor: ${displayName}. Editorial: ${editorialText}. Sinopsis: ${descripcionText}`;
+      hablarTexto(textoLectura, true);
+    });
+  }
+
+  if (btnLeerPdfCompleto && book.archivoUrl) {
+    btnLeerPdfCompleto.addEventListener('click', async () => {
+      detenerLecturaVoz();
+      if (btnDetenerLectura) btnDetenerLectura.style.display = 'flex';
+      
+      await leerPdfLibro(book.archivoUrl, (statusMessage) => {
+        if (statusLecturaPdf) statusLecturaPdf.textContent = statusMessage;
+      });
+    });
+  }
+
+  if (btnDetenerLectura) {
+    btnDetenerLectura.addEventListener('click', () => {
+      detenerLecturaVoz();
+      btnDetenerLectura.style.display = 'none';
+      if (statusLecturaPdf) statusLecturaPdf.textContent = 'Lectura detenida.';
+    });
+  }
 
   if (bookId) {
     fetchCategoriasPorLibro(bookId).then(categorias => {
@@ -668,6 +794,7 @@ async function loadAndRenderRelatedBooks(authorId, authorNameQuery, currentBookI
       card.addEventListener('click', (e) => {
         e.stopPropagation();
         e.stopImmediatePropagation();
+        detenerLecturaVoz();
         const nextBookId = card.getAttribute('data-id');
         openBookDetailsView(nextBookId);
       });
@@ -850,7 +977,6 @@ async function openCreateBookModal() {
   bodyContent.innerHTML = `
     <form id="createBookForm" style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto; padding-right: 4px;">
       
-      <!-- Título y Subtítulo -->
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div style="flex: 2; min-width: 200px;">
           <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Título del Libro *</label>
@@ -862,7 +988,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- ISBN, Editorial, Tipo de Libro y Formato de Libro -->
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 130px;">
           <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">ISBN *</label>
@@ -888,7 +1013,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Autor -->
       <div style="border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; background: #f8fafc;">
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 8px;">Autor *</label>
         <div style="display: flex; gap: 16px; margin-bottom: 10px; font-size: 0.85rem;">
@@ -916,7 +1040,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Idioma y País -->
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 150px;">
           <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Idioma *</label>
@@ -931,7 +1054,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Categorías -->
       <div style="border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; background: #f8fafc;">
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 8px;">Categorías *</label>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -939,7 +1061,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Géneros -->
       <div style="border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; background: #f8fafc;">
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 8px;">Géneros <span style="font-weight: normal; color: #64748b;">(Opcional)</span></label>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -947,7 +1068,6 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Archivos Multimedia -->
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 180px;">
           <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Portada del Libro * (Imagen)</label>
@@ -959,13 +1079,11 @@ async function openCreateBookModal() {
         </div>
       </div>
 
-      <!-- Descripción -->
       <div>
         <label style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Descripción / Sinopsis *</label>
         <textarea id="b_descripcion" required rows="3" placeholder="Sinopsis o detalles del libro..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem; resize: vertical;"></textarea>
       </div>
 
-      <!-- Botones -->
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
         <button type="button" id="cancelCreateBook" style="padding: 10px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500; font-size: 0.9rem;">Cancelar</button>
         <button type="submit" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; background: #6366f1; color: white; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Guardar Libro</button>
@@ -974,7 +1092,6 @@ async function openCreateBookModal() {
     </form>
   `;
 
-  // Cambio de pestaña Autor Existente / Nuevo
   const radioAuthorType = modal.querySelectorAll('input[name="authorType"]');
   const sectionExisting = document.getElementById('section_existing_author');
   const sectionNew = document.getElementById('section_new_author');
@@ -999,7 +1116,6 @@ async function openCreateBookModal() {
 
   document.getElementById('cancelCreateBook').addEventListener('click', () => modal.style.display = 'none');
 
-  // Submit del Formulario
   const form = document.getElementById('createBookForm');
   if (form) {
     form.addEventListener('submit', async (e) => {
@@ -1028,7 +1144,6 @@ async function openCreateBookModal() {
       try {
         const formData = new FormData();
 
-        // DTO principal del libro
         const libroDtoReq = {
           titulo: document.getElementById('b_titulo').value.trim(),
           subtitulo: document.getElementById('b_subtitulo').value.trim(),
@@ -1042,22 +1157,18 @@ async function openCreateBookModal() {
         };
         formData.append('libroDtoReq', new Blob([JSON.stringify(libroDtoReq)], { type: 'application/json' }));
 
-        // Archivos multimedia obligatorios
         formData.append('portada', portadaFile);
         formData.append('libro', pdfFile);
 
-        // Categorías seleccionadas
         const categoriasList = selectedCatCheckboxes.map(cb => ({ id: Number(cb.value) }));
         formData.append('categorias', new Blob([JSON.stringify(categoriasList)], { type: 'application/json' }));
 
-        // Géneros seleccionados con el nombre capturado en dataset
         const generosList = selectedGenCheckboxes.map(cb => ({
           id: Number(cb.value),
           nombre: cb.dataset.nombre || ''
         }));
         formData.append('generos', new Blob([JSON.stringify(generosList)], { type: 'application/json' }));
 
-        // Gestión del Autor
         const authorTypeVal = form.querySelector('input[name="authorType"]:checked').value;
         let idAutorParam = null;
 

@@ -232,7 +232,7 @@ export function initAuthModal() {
 
     async function loadRoles() {
       try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROLES}`);
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROLES_ADMIN}`);
         if (response.ok) {
           const data = await response.json();
           const roles = Array.isArray(data) ? data : (data.data || data.content || data.roles || []);
@@ -240,7 +240,7 @@ export function initAuthModal() {
 
           const validRoles = roles.filter(r => {
             const nombreRol = (r.nombre || r.name || '').toLowerCase();
-            return !nombreRol.includes('admin');
+            return !nombreRol.includes('administrador') && !nombreRol.includes('admin');  
           });
 
           if (validRoles.length > 0) {

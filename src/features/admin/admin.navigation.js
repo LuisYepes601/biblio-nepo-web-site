@@ -9,21 +9,17 @@ import { loadFormatsView } from '../formats/formats.js';
 import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
 import { loadFavoritesView } from '../favoritos/favorites.component.js'; 
 
-// Control global de voz y estado de navegación
 let recognitionInstance = null;
 let isListeningGlobal = false;
 let currentViewName = '';
+let isSpeakingTTS = false;
 
-/**
- * Obtiene una voz válida en español del navegador
- */
 function obtenerVozEspanol() {
   if (!('speechSynthesis' in window)) return null;
   const voces = window.speechSynthesis.getVoices();
   return voces.find(v => v.lang.startsWith('es') || v.lang.includes('es-ES') || v.lang.includes('es-MX')) || voces[0] || null;
 }
 
-// Precargar voces cuando estén disponibles en el navegador
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => {
     window.speechSynthesis.getVoices();
@@ -31,25 +27,25 @@ if ('speechSynthesis' in window) {
 }
 
 /**
- * Función para sintetizar texto a voz garantizando la reproducción limpia sin bloqueos
+ * Sintetiza texto a voz ÚNICAMENTE si el modo de voz/dictado está activado
  */
-export function hablarTexto(mensaje) {
+export function hablarTexto(mensaje, forzar = false) {
   if (!('speechSynthesis' in window)) return;
+  // Solo habla si el control por voz está activo o si se fuerza explícitamente
+  if (!isListeningGlobal && !forzar) return;
 
-  // Desatascar motor de síntesis si el navegador lo pausó
+  isSpeakingTTS = true;
+
   if (window.speechSynthesis.paused) {
     window.speechSynthesis.resume();
   }
 
-  // Detener locuciones anteriores
   window.speechSynthesis.cancel();
 
-  // Pausar el micrófono mientras habla para evitar acoplamientos
   if (recognitionInstance && isListeningGlobal) {
     try { recognitionInstance.abort(); } catch (e) {}
   }
 
-  // El retraso de 60ms permite que el navegador limpie la cola de audio antes de emitir la nueva locución
   setTimeout(() => {
     const utterance = new SpeechSynthesisUtterance(mensaje);
     utterance.lang = 'es-ES';
@@ -57,31 +53,23 @@ export function hablarTexto(mensaje) {
     utterance.pitch = 1;
 
     const voz = obtenerVozEspanol();
-    if (voz) {
-      utterance.voice = voz;
-    }
+    if (voz) utterance.voice = voz;
 
     const reactivarMicrofono = () => {
-      if (recognitionInstance && isListeningGlobal) {
-        setTimeout(() => {
-          try { 
-            recognitionInstance.start(); 
-          } catch (e) {}
-        }, 300);
-      }
+      setTimeout(() => {
+        isSpeakingTTS = false;
+        if (recognitionInstance && isListeningGlobal) {
+          try { recognitionInstance.start(); } catch (e) {}
+        }
+      }, 500);
     };
 
     utterance.onend = reactivarMicrofono;
-    utterance.onerror = (err) => {
-      console.warn('Error en locución de voz:', err);
-      reactivarMicrofono();
-    };
+    utterance.onerror = () => reactivarMicrofono();
 
-    // Referencia global para prevenir la destrucción por el limpiador de memoria de JavaScript
     window.currentUtterance = utterance;
-
     window.speechSynthesis.speak(utterance);
-  }, 60);
+  }, 80);
 }
 
 export function logoutUser() {
@@ -92,6 +80,8 @@ export function logoutUser() {
 }
 
 export function navigateToView(view) {
+  if (currentViewName === view) return;
+
   const container = document.getElementById('admin-sidebar-container');
   if (container) {
     const navItems = container.querySelectorAll('.sidebar-nav li');
@@ -118,7 +108,8 @@ export function navigateToView(view) {
     'roles': 'Roles y Permisos'
   };
 
-  // Cargar vista correspondiente
+  currentViewName = view;
+
   if (view === 'dashboard') {
     loadDashboardView();
     switchView('dashboard'); 
@@ -142,13 +133,10 @@ export function navigateToView(view) {
     loadRolesView();
   }
 
-  // Anunciar siempre la sección en voz alta
   const nuevoNombreSeccion = nombresVistasMap[view] || view;
-  currentViewName = view;
   hablarTexto(`Sección ${nuevoNombreSeccion}`);
 }
 
-// Helper para normalizar texto
 function normalizarTexto(texto) {
   if (!texto) return '';
   return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -187,43 +175,44 @@ function initVoiceNavigation() {
 
   const btnVoice = document.getElementById('btnVoiceNav');
 
-  const showToast = (message, speak = true) => {
-    let toast = document.getElementById('voice-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'voice-toast';
-      document.body.appendChild(toast);
+  // Funciones para actualizar la interfaz del botón
+  const restablecerBotonVoz = () => {
+    if (btnVoice) {
+      btnVoice.classList.remove('listening');
+      const span = btnVoice.querySelector('span');
+      if (span) span.textContent = 'Control por Voz';
     }
-    toast.textContent = message;
-    toast.className = 'voice-toast show';
-    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
 
-    if (speak) {
-      hablarTexto(message);
+  const activarBotonVoz = () => {
+    if (btnVoice) {
+      btnVoice.classList.add('listening');
+      const span = btnVoice.querySelector('span');
+      if (span) span.textContent = 'Micrófono Activo';
     }
   };
 
   const comandosMap = {
-    'dashboard': 'dashboard', 'inicio': 'dashboard', 'panel': 'dashboard',
-    'catalogo': 'catalog', 'libros': 'catalog', 'favoritos': 'favorites',
-    'categorias': 'categories', 'categoria': 'categories',
-    'generos': 'genres', 'genero': 'genres', 
-    'formatos': 'formats', 'formato': 'formats', 
+    'dashboard': 'dashboard', 'inicio': 'dashboard', 'panel': 'dashboard', 'dashboard principal': 'dashboard',
+    'catalogo': 'catalog', 'libros': 'catalog', 'catalogo de libros': 'catalog',
+    'favoritos': 'favorites', 'mis favoritos': 'favorites',
+    'categorias': 'categories', 'categoria': 'categories', 'gestion de categorias': 'categories',
+    'generos': 'genres', 'genero': 'genres', 'generos literarios': 'genres', 'generos libro': 'genres',
+    'formatos': 'formats', 'formato': 'formats', 'formatos de libro': 'formats',
     'autores': 'authors', 'autor': 'authors',
-    'usuarios': 'users', 'usuario': 'users', 'personas': 'users',
-    'roles': 'roles', 'rol': 'roles', 'permisos': 'roles',
+    'usuarios': 'users', 'usuario': 'users', 'gestion de usuarios': 'users',
+    'roles': 'roles', 'rol': 'roles', 'permisos': 'roles', 'gestion de roles': 'roles',
     'documentos': 'id-types', 'identificaciones': 'id-types', 'tipos de documento': 'id-types'
   };
 
   recognition.onstart = () => {
     isListeningGlobal = true;
-    if (btnVoice) {
-      btnVoice.classList.add('listening');
-      btnVoice.querySelector('span').textContent = 'Micrófono Activo';
-    }
+    activarBotonVoz();
   };
 
   recognition.onresult = (event) => {
+    if (isSpeakingTTS || (window.speechSynthesis && window.speechSynthesis.speaking)) return;
+
     const lastResultIndex = event.results.length - 1;
     const resultObj = event.results[lastResultIndex][0];
     
@@ -231,30 +220,23 @@ function initVoiceNavigation() {
     const confidence = resultObj.confidence;
     const transcript = normalizarTexto(transcriptOriginal);
 
-    console.log(`🎤 Escuchado: "${transcriptOriginal}" | Confianza: ${confidence.toFixed(2)}`);
-
     if (confidence > 0 && confidence < 0.65) return;
     if (transcript.length < 2) return;
 
-    // 1. Apagar micrófono
+    // 1. APAGAR MICRÓFONO
     if (transcript.includes('apagar microfono') || transcript.includes('desactivar microfono') || transcript.includes('dejar de escuchar')) {
       isListeningGlobal = false;
-      recognition.stop();
-      if (btnVoice) {
-        btnVoice.classList.remove('listening');
-        btnVoice.querySelector('span').textContent = 'Control por Voz';
-      }
-      hablarTexto('Desactivado.');
+      restablecerBotonVoz();
+      hablarTexto('Desactivado.', true);
+      try { recognition.stop(); } catch(e) {}
       return;
     }
 
-    // 2. Cerrar sesión
-    if (transcript.includes('cerrar sesion') || transcript.includes('salir')) {
+    if (transcript.includes('cerrar sesion') || transcript.includes('salir de la cuenta')) {
       logoutUser();
       return;
     }
 
-    // 3. Consultar ubicación actual
     if (transcript.includes('donde estoy') || transcript.includes('seccion actual')) {
       const activeNav = document.querySelector('.sidebar-nav li.active a span');
       const nombreActual = activeNav ? activeNav.textContent.trim() : 'el panel';
@@ -262,41 +244,106 @@ function initVoiceNavigation() {
       return;
     }
 
-    // -------------------------------------------------------------
-    // FLUJO INTERACTIVO PASO A PASO: CREACIÓN DE CATEGORÍA POR VOZ
-    // -------------------------------------------------------------
+    // 2. COMANDOS DE CANCELAR Y GUARDAR
+    const esCancelar = transcript === 'cancelar' || transcript.includes('cancelar') || 
+                       transcript === 'cerrar' || transcript.includes('cerrar modal') ||
+                       transcript.includes('regresar') || transcript.includes('volver') || transcript.includes('salir');
+
+    if (esCancelar) {
+      const modalAbierto = document.querySelector('.modal-backdrop[style*="display: flex"], #categoryModal[style*="display: flex"]');
+      const btnCancelModal = document.querySelector('#cancelCreateCatBtn, #cancelEditCatBtn, #cancelDeleteCatBtn, #closeCategoryModalBtn, #closeRoleModalBtn, #closeModalBtn, .form-container .btn-secondary');
+
+      if (modalAbierto && btnCancelModal) {
+        btnCancelModal.click();
+        return;
+      }
+
+      const btnBackDashboard = document.querySelector('#btnBackToDashboard, .btn-back-dashboard');
+      if (btnBackDashboard) {
+        btnBackDashboard.click();
+        return;
+      } else if (currentViewName && currentViewName !== 'dashboard') {
+        hablarTexto('Regresando al dashboard principal.');
+        navigateToView('dashboard');
+        return;
+      }
+    }
+
+    const esGuardar = transcript === 'guardar' || transcript === 'confirmar' || 
+                      transcript === 'guardar categoria' || transcript === 'guardar cambios' ||
+                      transcript.includes('confirmar eliminacion') || transcript === 'si, eliminar' || transcript === 'si eliminar' || transcript === 'si';
+
+    if (esGuardar) {
+      const btnConfirm = document.querySelector('#btnSubmitCreateCat, #btnSubmitEditCat, #confirmDeleteCatBtn, .form-container button[type="submit"]');
+      if (btnConfirm) {
+        btnConfirm.click();
+        return;
+      }
+    }
+
+    // 3. CAPTURA Y DICTADO EN CAMPOS
     const activeElement = document.activeElement;
 
-    // PASO 1: CAPTURA DEL NOMBRE
-    if (activeElement && activeElement.id === 'createCatNombre') {
-      activeElement.value = transcriptOriginal;
-      const descInput = document.getElementById('createCatDescripcion');
+    // Dictado del Nombre
+    if (activeElement && (activeElement.id === 'createCatNombre' || activeElement.id === 'editCatNombre')) {
+      const esEdicion = activeElement.id === 'editCatNombre';
+      const comandosConservar = ['siguiente', 'conservar', 'mantener', 'igual', 'continuar'];
+      const deseaConservar = comandosConservar.some(cmd => transcript.includes(cmd));
+
+      let valNombre = activeElement.value;
+      if (!deseaConservar) {
+        valNombre = transcriptOriginal;
+        activeElement.value = valNombre;
+      }
+
+      const descInput = document.getElementById(esEdicion ? 'editCatDescripcion' : 'createCatDescripcion');
       if (descInput) {
         descInput.focus();
-        hablarTexto(`Nombre ${transcriptOriginal} capturado. Ahora dime la descripción opcional, o di 'omitir' para guardar.`);
+        hablarTexto(`Nombre capturado: ${valNombre}. Diga la descripción opcional o "guardar".`);
       }
       return;
     }
 
-    // PASO 2: CAPTURA DE DESCRIPCIÓN U OMITIR Y GUARDAR AUTOMÁTICAMENTE
-    if (activeElement && activeElement.id === 'createCatDescripcion') {
-      const omitirComandos = ['omitir', 'ninguna', 'ninguno', 'sin descripcion', 'saltar', 'siguiente', 'no', 'ninguna descripcion'];
+    // Dictado de la Descripción
+    if (activeElement && (activeElement.id === 'createCatDescripcion' || activeElement.id === 'editCatDescripcion')) {
+      const omitirComandos = ['omitir', 'ninguna', 'ninguno', 'sin descripcion', 'saltar', 'siguiente'];
       const esOmitir = omitirComandos.some(cmd => transcript.includes(cmd));
 
       if (esOmitir) {
         activeElement.value = '';
+        hablarTexto('Sin descripción. Diga "guardar" para confirmar o "cancelar".');
       } else {
         activeElement.value = transcriptOriginal;
-      }
-
-      const btnSubmit = document.getElementById('btnSubmitCreateCat') || document.querySelector('#createCategoryForm button[type="submit"]');
-      if (btnSubmit) {
-        btnSubmit.click();
+        hablarTexto(`Descripción capturada: ${transcriptOriginal}. Diga "guardar" para confirmar o "cancelar".`);
       }
       return;
     }
 
-    // 4. Navegación entre secciones
+    // 4. ABRIR MODALES Y ACCIONES CRUD
+    if (transcript.includes('crear') || transcript.includes('nuevo') || transcript.includes('nueva') || transcript.includes('agregar')) {
+      const btnAdd = document.querySelector('.module-header .btn-primary, #btn-add-role, #btn-add-author, #btn-add-category, #btn-add-format, #btn-add-genre');
+      if (btnAdd) {
+        btnAdd.click();
+        return;
+      }
+    }
+
+    if (transcript.startsWith('editar ') || transcript.startsWith('modificar ')) {
+      const objetivo = transcript.replace('editar ', '').replace('modificar ', '').trim();
+      if (accionarBotonTabla('.btn-edit, .btn-format-edit, .btn-genre-edit, .btn-role-edit', objetivo)) return;
+    }
+
+    if (transcript.startsWith('eliminar ') || transcript.startsWith('borrar ')) {
+      const objetivo = transcript.replace('eliminar ', '').replace('borrar ', '').trim();
+      if (accionarBotonTabla('.btn-delete, .btn-format-delete, .btn-genre-delete, .btn-role-delete', objetivo)) return;
+    }
+
+    if (transcript.startsWith('ver ') || transcript.startsWith('detalles de ')) {
+      const objetivo = transcript.replace('ver detalles de ', '').replace('detalles de ', '').replace('ver ', '').trim();
+      if (accionarBotonTabla('.btn-details, .btn-format-details, .btn-genre-details, .btn-role-details', objetivo)) return;
+    }
+
+    // 5. NAVEGACIÓN ENTRE SECCIONES
     const textoNavegacion = transcript
       .replace(/^ir a la seccion de\s+/i, '')
       .replace(/^ir a la seccion\s+/i, '')
@@ -304,193 +351,35 @@ function initVoiceNavigation() {
       .replace(/^ir a\s+/i, '')
       .replace(/^ir al\s+/i, '')
       .replace(/^llevame a\s+/i, '')
-      .replace(/^llevame al\s+/i, '')
-      .replace(/^abrir seccion\s+/i, '')
-      .replace(/^abrir modulo\s+/i, '')
       .replace(/^abrir\s+/i, '')
-      .replace(/^mostrar\s+/i, '')
       .trim();
 
     for (const [key, view] of Object.entries(comandosMap)) {
-      if (textoNavegacion === key || transcript.includes(key)) {
+      if (textoNavegacion === key || transcript === key || transcript.includes(key)) {
         navigateToView(view);
         return;
       }
     }
-
-    // 5. Búsqueda por TÍTULO DE LIBRO
-    if (
-      transcript.startsWith('buscar libro ') || 
-      transcript.startsWith('buscar por libro ') || 
-      transcript.startsWith('filtrar por libro ') ||
-      transcript.startsWith('filtrar libro ')
-    ) {
-      const terminoLibro = transcriptOriginal
-        .replace(/^buscar libro\s+/i, '')
-        .replace(/^buscar por libro\s+/i, '')
-        .replace(/^filtrar por libro\s+/i, '')
-        .replace(/^filtrar libro\s+/i, '')
-        .trim();
-
-      const searchBookInput = document.getElementById('searchBookName');
-
-      if (searchBookInput) {
-        searchBookInput.value = terminoLibro;
-        searchBookInput.dispatchEvent(new Event('input', { bubbles: true }));
-        searchBookInput.focus();
-        showToast(`Buscando libro ${terminoLibro}`);
-        return;
-      }
-    }
-
-    // 6. Búsqueda general
-    if (transcript.startsWith('buscar ') || transcript.startsWith('filtrar por ')) {
-      const terminoBusqueda = transcriptOriginal
-        .replace(/^buscar\s+/i, '')
-        .replace(/^filtrar por\s+/i, '')
-        .trim();
-
-      const searchInput = document.querySelector(
-        '#searchAuthorName, #searchCategoryName, #searchFormatName, #searchGenreName, #searchRoleName, input[type="search"], input[placeholder*="Buscar"]'
-      );
-
-      if (searchInput) {
-        searchInput.value = terminoBusqueda;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        searchInput.focus();
-        showToast(`Buscando ${terminoBusqueda}`);
-        return;
-      }
-    }
-
-    // 7. Limpiar búsquedas
-    if (
-      transcript.includes('limpiar busqueda') || 
-      transcript.includes('borrar busqueda') || 
-      transcript.includes('limpiar filtro') || 
-      transcript.includes('borrar filtro') ||
-      transcript.includes('limpiar filtros')
-    ) {
-      const inputsBuscadores = document.querySelectorAll(
-        '#searchAuthorName, #searchBookName, #searchCategoryName, #searchFormatName, #searchGenreName, #searchRoleName, input[type="search"], input[placeholder*="Buscar"]'
-      );
-
-      if (inputsBuscadores.length > 0) {
-        inputsBuscadores.forEach(input => {
-          input.value = '';
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.blur();
-        });
-        showToast('Filtros limpiados.');
-        return;
-      }
-    }
-
-    // 8. CRUD: Ver / Detalles
-    if (transcript.startsWith('ver ') || transcript.startsWith('detalles de ') || transcript.startsWith('auditoria de ')) {
-      const objetivo = transcript
-        .replace('ver detalles de ', '')
-        .replace('detalles de ', '')
-        .replace('auditoria de ', '')
-        .replace('ver ', '')
-        .trim();
-
-      if (accionarBotonTabla('.btn-details, .btn-format-details, .btn-genre-details, .btn-role-details', objetivo)) {
-        showToast(`Detalles de ${objetivo}`);
-        return;
-      }
-    }
-
-    // 9. CRUD: Editar
-    if (transcript.startsWith('editar ') || transcript.startsWith('modificar ') || transcript.startsWith('actualizar ')) {
-      const objetivo = transcript
-        .replace('editar ', '')
-        .replace('modificar ', '')
-        .replace('actualizar ', '')
-        .trim();
-
-      if (accionarBotonTabla('.btn-edit, .btn-format-edit, .btn-genre-edit, .btn-role-edit', objetivo)) {
-        showToast(`Editando ${objetivo}`);
-        return;
-      }
-    }
-
-    // 10. CRUD: Eliminar
-    if (transcript.startsWith('eliminar ') || transcript.startsWith('borrar ') || transcript.startsWith('quitar ')) {
-      const objetivo = transcript
-        .replace(/^eliminar\s+/i, '')
-        .replace(/^borrar\s+/i, '')
-        .replace(/^quitar\s+/i, '')
-        .trim();
-
-      if (accionarBotonTabla('.btn-delete, .btn-format-delete, .btn-genre-delete, .btn-role-delete', objetivo)) {
-        showToast(`Solicitado eliminar ${objetivo}`, false);
-        return;
-      }
-    }
-
-    // 11. Crear / Agregar por voz
-    if (transcript.includes('crear') || transcript.includes('nuevo') || transcript.includes('nueva') || transcript.includes('agregar')) {
-      const btnAdd = document.querySelector('.module-header .btn-primary, #btn-add-role, #btn-add-author, #btn-add-category, #btn-add-format, #btn-add-genre, #btnNewFormat, #btnNewGenre');
-      if (btnAdd) {
-        btnAdd.click();
-        showToast('Formulario abierto.', false);
-        return;
-      }
-    }
-
-    // 12. Guardar / Confirmar por voz
-    if (
-      transcript.includes('guardar') || 
-      transcript.includes('confirmar') || 
-      transcript.includes('si eliminar') || 
-      transcript.includes('si, eliminar') || 
-      transcript === 'si'
-    ) {
-      const btnConfirm = document.querySelector('#confirmDeleteCatBtn, #btnSubmitCreateCat, .form-container button[type="submit"], .btn-success');
-      if (btnConfirm) {
-        btnConfirm.click();
-        showToast('Confirmado.');
-        return;
-      }
-    }
-
-    // 13. Cancelar / Cerrar modal
-    if (transcript.includes('cancelar') || transcript.includes('regresar') || transcript.includes('cerrar') || transcript.includes('salir') || transcript === 'no') {
-      const btnCancel = document.querySelector(
-        '#cancelDeleteCatBtn, #closeRoleModalBtn, #closeModalBtn, #closeCategoryModalBtn, #closeFormatModalBtn, #closeGenreModalBtn, #cancelCreateRoleBtn, #cancelEditRoleBtn, #cancelCreateBtn, #cancelEditBtn, #cancelCreateCatBtn, #cancelEditCatBtn, #cancelCreateFormatBtn, #cancelEditFormatBtn, #cancelCreateGenreBtn, #cancelEditGenreBtn, .form-container .btn-secondary'
-      );
-      if (btnCancel) {
-        btnCancel.click();
-        showToast('Cancelado.');
-        return;
-      }
-    }
-
-    // 14. Dictado en input activo general
-    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-      activeElement.value = activeElement.value ? activeElement.value + ' ' + transcriptOriginal : transcriptOriginal;
-      showToast('Dictado agregado.', false);
-      return;
-    }
   };
 
   recognition.onerror = (event) => {
-    if (event.error !== 'no-speech') console.warn(`Error de voz: ${event.error}`);
+    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      console.warn(`Error de voz: ${event.error}`);
+    }
   };
 
   recognition.onend = () => {
-    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+    if (!isListeningGlobal) {
+      restablecerBotonVoz();
       return;
     }
+
+    if (isSpeakingTTS || (window.speechSynthesis && window.speechSynthesis.speaking)) return;
 
     if (isListeningGlobal) {
       setTimeout(() => {
         try { recognition.start(); } catch(e) {}
       }, 300); 
-    } else if (btnVoice) {
-      btnVoice.classList.remove('listening');
-      btnVoice.querySelector('span').textContent = 'Control por Voz';
     }
   };
 
@@ -498,8 +387,9 @@ function initVoiceNavigation() {
     btnVoice.addEventListener('click', () => {
       if (isListeningGlobal) {
         isListeningGlobal = false;
-        recognition.stop();
-        hablarTexto('Desactivado.');
+        restablecerBotonVoz();
+        hablarTexto('Control por voz desactivado.', true);
+        try { recognition.stop(); } catch(e) {}
       } else {
         isListeningGlobal = true;
         try { recognition.start(); } catch(e) {}
@@ -521,55 +411,55 @@ export function initAdminNavigation() {
           <span class="brand-name">BiblioNepo</span>
         </div>
 
-        <div class="user-profile-card" id="btnProfileView" title="Ver mi perfil" role="button" tabindex="0" aria-label="Ver mi perfil">
-          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar del administrador" class="user-avatar">
+        <div class="user-profile-card" id="btnProfileView" title="Ver mi perfil" role="button" tabindex="0">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
           <div class="user-details">
             <span class="user-name">Carlos Admin</span>
             <span class="user-role" id="user-role">Super Administrador</span>
           </div>
-          <i class="fa-solid fa-chevron-right profile-arrow" aria-hidden="true"></i>
+          <i class="fa-solid fa-chevron-right profile-arrow"></i>
         </div>
 
-        <nav class="sidebar-nav" aria-label="Navegación principal del administrador">
+        <nav class="sidebar-nav">
           <div class="nav-section">
             <span class="nav-section-title">PRINCIPAL</span>
             <ul class="nav-list">
-              <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i> <span>Dashboard</span></a></li>
-              <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book" aria-hidden="true"></i> <span>Catálogo Libros</span></a></li>
-              <li><a href="#favoritos" data-view="favorites"><i class="fa-solid fa-heart" aria-hidden="true"></i> <span>Mis Favoritos</span></a></li>
+              <li class="active"><a href="#dashboard" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></a></li>
+              <li><a href="#catalogo" data-view="catalog"><i class="fa-solid fa-book"></i> <span>Catálogo Libros</span></a></li>
+              <li><a href="#favoritos" data-view="favorites"><i class="fa-solid fa-heart"></i> <span>Mis Favoritos</span></a></li>
             </ul>
           </div>
           <div class="nav-section">
             <span class="nav-section-title">CATÁLOGO</span>
             <ul class="nav-list">
-              <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree" aria-hidden="true"></i> <span>Categorías</span></a></li>
-              <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags" aria-hidden="true"></i> <span>Géneros Libro</span></a></li>
-              <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook" aria-hidden="true"></i> <span>Formatos</span></a></li>
-              <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather" aria-hidden="true"></i> <span>Autores</span></a></li>
+              <li><a href="#categorias" data-view="categories"><i class="fa-solid fa-folder-tree"></i> <span>Categorías</span></a></li>
+              <li><a href="#generos" data-view="genres"><i class="fa-solid fa-tags"></i> <span>Géneros Libro</span></a></li>
+              <li><a href="#formatos" data-view="formats"><i class="fa-solid fa-swatchbook"></i> <span>Formatos</span></a></li>
+              <li><a href="#autores" data-view="authors"><i class="fa-solid fa-feather"></i> <span>Autores</span></a></li>
             </ul>
           </div>
           <div class="nav-section">
             <span class="nav-section-title">ADMINISTRACIÓN</span>
             <ul class="nav-list">
-              <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users" aria-hidden="true"></i> <span>Gestión Usuarios</span></a></li>
-              <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> <span>Gestión Roles</span></a></li>
-              <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card" aria-hidden="true"></i> <span>Tipos Documento</span></a></li>
+              <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users"></i> <span>Gestión Usuarios</span></a></li>
+              <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield"></i> <span>Gestión Roles</span></a></li>
+              <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card"></i> <span>Tipos Documento</span></a></li>
             </ul>
           </div>
         </nav>
       </div>
 
       <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
-        <button class="btn-public-site btn-voice-nav" id="btnVoiceNav" aria-label="Activar control por voz">
-          <i class="fa-solid fa-microphone" aria-hidden="true"></i>
+        <button class="btn-public-site btn-voice-nav" id="btnVoiceNav">
+          <i class="fa-solid fa-microphone"></i>
           <span>Control por Voz</span>
         </button>
         <button class="btn-public-site" id="btnGoToPublic">
-          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
           <span>Sitio Público</span>
         </button>
-        <button class="btn-public-site" id="btnLogout" style="background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; cursor: pointer;" aria-label="Cerrar sesión">
-          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        <button class="btn-public-site" id="btnLogout" style="background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; cursor: pointer;">
+          <i class="fa-solid fa-right-from-bracket"></i>
           <span>Cerrar Sesión</span>
         </button>
       </div>
@@ -605,8 +495,7 @@ export function initAdminNavigation() {
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('button, a, div[role="button"]');
   if (!btn) return;
-  const isLogoutBtn = btn.id === 'btnLogout' || btn.id === 'btn-logout-profile';
-  if (isLogoutBtn) {
+  if (btn.id === 'btnLogout' || btn.id === 'btn-logout-profile') {
     e.preventDefault();
     logoutUser();
   }

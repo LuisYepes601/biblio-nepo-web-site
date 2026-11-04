@@ -1,17 +1,14 @@
 import { fetchLibros, fetchCategorias, fetchIdiomas, fetchTiposLibro, fetchGeneros, fetchLibroDetalles, fetchCategoriasPorLibro } from './catalog.api.js';
 import { getStateMessageHTML } from '../../core/components/state-message.js';
 import { addFavoriteApi, removeFavoriteApi } from '../favoritos/favorite-api.js';
+import { hablarTexto } from '../admin/admin.navigation.js';
 
 const PALETTE = ['#6E2A2A', '#1C2536', '#9A6A34', '#3B5B45', '#4A3B6B', '#7A4A2A', '#2E4A5E', '#5C2E4A'];
 
-/**
- * Efecto visual de Corazón Flotante y Resplandor en la tarjeta
- */
 function triggerFavoriteVisualFeedback(btn, isAdding) {
   const card = btn.closest('.book-card');
   const rect = btn.getBoundingClientRect();
 
-  // 1. Crear el corazón flotante animado en la posición exacta del botón
   const floatingHeart = document.createElement('div');
   floatingHeart.innerHTML = isAdding ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-heart-crack"></i>';
   floatingHeart.style.cssText = `
@@ -28,7 +25,6 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
   `;
   document.body.appendChild(floatingHeart);
 
-  // Iniciar la animación ascendente y desvanecimiento
   requestAnimationFrame(() => {
     floatingHeart.style.transform = 'translateY(-50px) scale(1.7)';
     floatingHeart.style.opacity = '0';
@@ -38,7 +34,6 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
     floatingHeart.remove();
   }, 780);
 
-  // 2. Resplandor / Destello temporal en la tarjeta completa
   if (card) {
     const originalShadow = card.style.boxShadow;
     const originalTransform = card.style.transform;
@@ -56,9 +51,6 @@ function triggerFavoriteVisualFeedback(btn, isAdding) {
   }
 }
 
-/**
- * Notificación Toast flotante para dar feedback inmediato al usuario
- */
 function showToast(message, type = 'success') {
   let toast = document.getElementById('catalog-toast-notification');
   if (!toast) {
@@ -220,7 +212,7 @@ function renderFilterBar(categorias, idiomas, tiposLibro, generos, filterTabs, a
           <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path>
           </svg>
           <select id="languageSelect">
             <option value="">Todos los idiomas</option>
@@ -380,7 +372,7 @@ export function initCatalog() {
 
     paginationContainer.innerHTML = `
       <button id="prevPageBtn" ${isFirstPage ? 'disabled' : ''} style="padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc; background: ${isFirstPage ? '#e5e7eb' : '#ffffff'}; cursor: ${isFirstPage ? 'not-allowed' : 'pointer'}; color: #333; font-weight: 600;">
-        ◄ Anterior
+        ◀ Anterior
       </button>
       <span style="font-size: 0.9rem; color: #374151; font-weight: 500;">
         Página <strong>${currentPage + 1}</strong> de <strong>${Math.max(totalPages, 1)}</strong>
@@ -501,7 +493,6 @@ export function initCatalog() {
     renderBooks();
   });
 
-  // Escuchador dinámico de interacción con favoritos con feedback animado Y ESTADO DE CARGA VISIBLE
   bookGrid.addEventListener('click', async (e) => {
     const favoriteBtn = e.target.closest('.btn-favorite');
     if (favoriteBtn) {
@@ -512,7 +503,6 @@ export function initCatalog() {
       const esFavorito = favoriteBtn.classList.contains('is-favorite');
       const originalHTML = favoriteBtn.innerHTML;
 
-      // 1. ESTADO DE CARGA VISIBLE INMEDIATO (Spinner animado)
       favoriteBtn.disabled = true;
       favoriteBtn.style.opacity = '0.85';
       favoriteBtn.style.transform = 'scale(0.95)';
@@ -522,7 +512,6 @@ export function initCatalog() {
         if (!esFavorito) {
           await addFavoriteApi(bookId);
 
-          // 2. ÉXITO AL GUARDAR: Corazón rojo relleno
           favoriteBtn.classList.add('is-favorite');
           favoriteBtn.style.color = '#dc2626';
           favoriteBtn.style.opacity = '1';
@@ -533,14 +522,12 @@ export function initCatalog() {
             </svg>
           `;
 
-          // Disparar destello en tarjeta, corazón flotante y notificación
           triggerFavoriteVisualFeedback(favoriteBtn, true);
           showToast('¡Guardado en tus Favoritos!', 'success');
 
         } else {
           await removeFavoriteApi(bookId);
 
-          // 2. ÉXITO AL ELIMINAR: Corazón con contorno vacío
           favoriteBtn.classList.remove('is-favorite');
           favoriteBtn.style.color = 'currentColor';
           favoriteBtn.style.opacity = '1';
@@ -614,11 +601,17 @@ export function openBookModal(book) {
     `;
     document.body.appendChild(modal);
 
-    modal.querySelector('#closeModal').addEventListener('click', () => {
+    const cerrarModalConAudio = () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (window.modalVoiceRecognition) {
+        try { window.modalVoiceRecognition.stop(); } catch(e){}
+      }
       modal.style.display = 'none';
-    });
+    };
+
+    modal.querySelector('#closeModal').addEventListener('click', cerrarModalConAudio);
     modal.addEventListener('click', (ev) => {
-      if (ev.target === modal) modal.style.display = 'none';
+      if (ev.target === modal) cerrarModalConAudio();
     });
   }
 
@@ -659,10 +652,36 @@ export function openBookModal(book) {
     } else if (esPdf) {
       visualizadorHTML = `
         <div class="modal-viewer-section" style="margin-top: 24px; border-top: 1px solid var(--line, #e5e7eb); padding-top: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <strong>Lector Digital:</strong>
-            <button id="btnFullscreenReader" style="background: var(--primary, #2563eb); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">Pantalla completa</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <strong style="font-size: 0.95rem; color: #1e293b;">Lector Digital:</strong>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <!-- Botón Escuchar Sinopsis -->
+              <button id="btnModalEscucharSinopsis" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                <i class="fa-solid fa-volume-high" style="font-size: 0.8rem; color: #16a34a;"></i> Escuchar Sinopsis
+              </button>
+              
+              <!-- Botón Leer PDF por Voz -->
+              <button id="btnModalLeerPdf" style="background: #f5f3ff; color: #6b21a8; border: 1px solid #ddd6fe; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                <i class="fa-solid fa-headphones" style="font-size: 0.8rem; color: #9333ea;"></i> Leer PDF por Voz
+              </button>
+
+              <!-- Botón Activar Comandos de Voz -->
+              <button id="btnModalComandoVoz" style="background: #fefce8; color: #a16207; border: 1px solid #fef08a; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;" title="Di 'sinopsis', 'leer pdf' o 'detener'">
+                <i class="fa-solid fa-microphone" style="font-size: 0.8rem; color: #ca8a04;"></i> Comando por Voz
+              </button>
+
+              <!-- Botón Detener Audio -->
+              <button id="btnModalDetenerAudio" style="display: none; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-square" style="font-size: 0.75rem; color: #dc2626;"></i> Detener
+              </button>
+
+              <!-- Pantalla completa -->
+              <button id="btnFullscreenReader" style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                <i class="fa-solid fa-expand" style="font-size: 0.8rem; color: #64748b;"></i> Pantalla completa
+              </button>
+            </div>
           </div>
+          <div id="statusLecturaModal" style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px; font-weight: 500; display: flex; align-items: center; gap: 6px;"></div>
           
           <div id="readerContainer" style="width: 100%; height: 500px; background: #2d3748; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--line, #e5e7eb); position: relative;">
             <div style="background: rgba(15, 23, 42, 0.9); padding: 10px 15px; display: flex; justify-content: center; gap: 15px; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10;">
@@ -800,6 +819,162 @@ export function openBookModal(book) {
         document.exitFullscreen();
       }
     });
+  }
+
+  const btnSinopsis = modal.querySelector('#btnModalEscucharSinopsis');
+  const btnLeerPdf = modal.querySelector('#btnModalLeerPdf');
+  const btnComandoVoz = modal.querySelector('#btnModalComandoVoz');
+  const btnDetener = modal.querySelector('#btnModalDetenerAudio');
+  const statusEl = modal.querySelector('#statusLecturaModal');
+
+  let cancelModalPdfReading = false;
+
+  if (btnSinopsis) {
+    btnSinopsis.addEventListener('click', () => {
+      cancelModalPdfReading = true;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (btnDetener) btnDetener.style.display = 'inline-flex';
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-play" style="color: #16a34a;"></i> <span>Leyendo sinopsis por voz...</span>`;
+
+      const textoLectura = `Leyendo detalles. Título: ${titulo}. Autor: ${autor}. Editorial: ${editorial}. Sinopsis: ${descripcion}`;
+      hablarTexto(textoLectura, true);
+    });
+  }
+
+  if (btnLeerPdf && archivoFinalUrl) {
+    btnLeerPdf.addEventListener('click', async () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      cancelModalPdfReading = false;
+      if (btnDetener) btnDetener.style.display = 'inline-flex';
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="color: #9333ea;"></i> <span>Procesando texto del PDF...</span>`;
+
+      try {
+        if (!window.pdfjsLib) {
+          hablarTexto('Cargando motor de lectura PDF, espere un momento.', true);
+          await new Promise(res => {
+            const checkLib = setInterval(() => {
+              if (window.pdfjsLib) {
+                clearInterval(checkLib);
+                res();
+              }
+            }, 200);
+          });
+        }
+
+        const loadingTask = window.pdfjsLib.getDocument(archivoFinalUrl);
+        const pdfDoc = await loadingTask.promise;
+        const totalPages = pdfDoc.numPages;
+
+        hablarTexto(`Iniciando lectura por voz del PDF. El documento contiene ${totalPages} páginas.`, true);
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          if (cancelModalPdfReading) break;
+
+          if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-volume-high" style="color: #9333ea;"></i> <span>Leyendo página ${pageNum} de ${totalPages}...</span>`;
+          const page = await pdfDoc.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+          if (pageText.length > 0) {
+            hablarTexto(`Página ${pageNum}. ${pageText}`, true);
+
+            await new Promise(resolve => {
+              const interval = setInterval(() => {
+                if (!window.speechSynthesis.speaking || cancelModalPdfReading) {
+                  clearInterval(interval);
+                  resolve();
+                }
+              }, 300);
+            });
+          }
+        }
+
+        if (!cancelModalPdfReading && statusEl) {
+          statusEl.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #16a34a;"></i> <span>Lectura del PDF finalizada.</span>`;
+        }
+      } catch (err) {
+        console.error('Error al leer el PDF por voz:', err);
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation" style="color: #dc2626;"></i> <span>No se pudo leer el archivo PDF.</span>`;
+        hablarTexto('Ocurrió un error al intentar leer el documento PDF.', true);
+      }
+    });
+  }
+
+  if (btnDetener) {
+    btnDetener.addEventListener('click', () => {
+      cancelModalPdfReading = true;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      btnDetener.style.display = 'none';
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-pause" style="color: #64748b;"></i> <span>Lectura detenida.</span>`;
+    });
+  }
+
+  // --- RECONOCIMIENTO DE COMANDOS DE VOZ ---
+  if (btnComandoVoz) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      btnComandoVoz.style.display = 'none';
+    } else {
+      let isListening = false;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      window.modalVoiceRecognition = recognition;
+
+      btnComandoVoz.addEventListener('click', () => {
+        if (!isListening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.warn('Error al iniciar micrófono:', e);
+          }
+        } else {
+          recognition.stop();
+        }
+      });
+
+      recognition.onstart = () => {
+        isListening = true;
+        btnComandoVoz.style.background = '#fef2f2';
+        btnComandoVoz.style.color = '#dc2626';
+        btnComandoVoz.style.borderColor = '#fecaca';
+        btnComandoVoz.innerHTML = `<i class="fa-solid fa-microphone-lines fa-beat" style="color: #dc2626;"></i> Escuchando...`;
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-ear-listen" style="color: #ca8a04;"></i> <span>Di: "sinopsis", "leer pdf" o "detener"</span>`;
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        console.log('Comando de voz detectado:', transcript);
+
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-comment" style="color: #ca8a04;"></i> <span>Comando: "${transcript}"</span>`;
+
+        if (transcript.includes('sinopsis') || transcript.includes('resumen')) {
+          if (btnSinopsis) btnSinopsis.click();
+        } else if (transcript.includes('pdf') || transcript.includes('leer') || transcript.includes('libro')) {
+          if (btnLeerPdf) btnLeerPdf.click();
+        } else if (transcript.includes('detener') || transcript.includes('parar') || transcript.includes('silencio') || transcript.includes('pausa')) {
+          if (btnDetener) btnDetener.click();
+        } else {
+          if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-question" style="color: #64748b;"></i> <span>No reconocí "${transcript}". Intenta decir "sinopsis", "leer pdf" o "detener".</span>`;
+        }
+      };
+
+      recognition.onerror = (err) => {
+        console.warn('Error en reconocimiento de voz:', err);
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #dc2626;"></i> <span>Error o permiso denegado al usar micrófono.</span>`;
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        btnComandoVoz.style.background = '#fefce8';
+        btnComandoVoz.style.color = '#a16207';
+        btnComandoVoz.style.borderColor = '#fef08a';
+        btnComandoVoz.innerHTML = `<i class="fa-solid fa-microphone" style="font-size: 0.8rem; color: #ca8a04;"></i> Comando por Voz`;
+      };
+    }
   }
 }
 
