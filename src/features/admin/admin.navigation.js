@@ -9,6 +9,7 @@ import { loadFormatsView } from '../formats/formats.js';
 import { loadBookTypesView } from '../book-types/book-types.js';
 import { loadIdentificationTypesView } from '../identification-types/identification-types.js';
 import { loadFavoritesView } from '../favoritos/favorites.component.js'; 
+import { loadLoansAdminView } from '../prestamos/prestamos.component.js'; // Nueva importación
 
 let recognitionInstance = null;
 let isListeningGlobal = false;
@@ -106,7 +107,8 @@ export function navigateToView(view) {
     'authors': 'Autores',
     'id-types': 'Tipos de Documento',
     'users': 'Gestión de Usuarios',
-    'roles': 'Roles y Permisos'
+    'roles': 'Roles y Permisos',
+    'loans': 'Gestión de Préstamos' // Nuevo nombre de vista
   };
 
   currentViewName = view;
@@ -134,6 +136,8 @@ export function navigateToView(view) {
     loadUsersView();
   } else if (view === 'roles') {
     loadRolesView();
+  } else if (view === 'loans') {
+    loadLoansAdminView(); // Nueva llamada a la vista
   }
 
   const nuevoNombreSeccion = nombresVistasMap[view] || view;
@@ -205,7 +209,8 @@ function initVoiceNavigation() {
     'autores': 'authors', 'autor': 'authors',
     'usuarios': 'users', 'usuario': 'users', 'gestion de usuarios': 'users',
     'roles': 'roles', 'rol': 'roles', 'permisos': 'roles', 'gestion de roles': 'roles',
-    'documentos': 'id-types', 'identificaciones': 'id-types', 'tipos de documento': 'id-types'
+    'documentos': 'id-types', 'identificaciones': 'id-types', 'tipos de documento': 'id-types',
+    'prestamos': 'loans', 'administrar prestamos': 'loans', 'gestion de prestamos': 'loans' // Nuevos comandos
   };
 
   recognition.onstart = () => {
@@ -438,6 +443,7 @@ export function initAdminNavigation() {
           <div class="nav-section">
             <span class="nav-section-title">ADMINISTRACIÓN</span>
             <ul class="nav-list">
+              <li><a href="#prestamos" data-view="loans"><i class="fa-solid fa-hand-holding-hand"></i> <span>Préstamos</span></a></li> <!-- Nuevo ítem -->
               <li><a href="#usuarios" data-view="users"><i class="fa-solid fa-users"></i> <span>Gestión Usuarios</span></a></li>
               <li><a href="#roles" data-view="roles"><i class="fa-solid fa-user-shield"></i> <span>Gestión Roles</span></a></li>
               <li><a href="#identificaciones" data-view="id-types"><i class="fa-solid fa-address-card"></i> <span>Tipos Documento</span></a></li>

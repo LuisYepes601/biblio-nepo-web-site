@@ -126,3 +126,41 @@ export async function returnLoan(loanId) {
 
   return await response.json();
 }
+
+/**
+ * Obtener TODOS los préstamos (Para la vista de Administrador)
+ */
+export async function fetchAllLoansAdmin(page = 0, size = 20, email = '') {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error('No hay una sesión activa.');
+  }
+
+  let url = `${API_CONFIG.BASE_URL}/api/v1/prestamos/admin?page=${page}&size=${size}`;
+  if (email) {
+    url += `&email=${encodeURIComponent(email)}`;
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (response.status === 403) {
+    throw new Error('Error 403: Acceso denegado para ver todos los préstamos.');
+  }
+
+  if (response.status === 401) {
+    throw new Error('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+  }
+
+  if (!response.ok) {
+    throw new Error('Error al obtener la lista de préstamos global.');
+  }
+
+  return await response.json();
+}
