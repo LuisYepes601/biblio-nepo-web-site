@@ -584,7 +584,26 @@ async function ejecutarCambioSeccion(seccion) {
 }
 
 /**
- * Renderiza dinámicamente los préstamos del usuario obtenidos del backend
+ * Formatea la fecha y hora a un formato limpio estilo Spotify / Dashboard
+ */
+function formatearFechaLimpia(fechaStr, horaStr) {
+  if (!fechaStr) return 'Sin fecha registrada';
+  try {
+    const partes = fechaStr.split('-');
+    if (partes.length === 3) {
+      const fechaObj = new Date(partes[0], partes[1] - 1, partes[2]);
+      const mesNombre = fechaObj.toLocaleDateString('es-ES', { month: 'short' });
+      const dia = partes[2];
+      const anio = partes[0];
+      const horaCorta = horaStr ? horaStr.substring(0, 5) : '';
+      return `${dia} ${mesNombre.replace('.', '')}, ${anio} ${horaCorta ? '• ' + horaCorta : ''}`;
+    }
+  } catch (e) {}
+  return `${fechaStr} ${horaStr ? '• ' + horaStr.substring(0, 5) : ''}`;
+}
+
+/**
+ * Renderiza los préstamos en un grid vertical (4 tarjetas por fila) visual y limpio
  */
 async function loadAndRenderUserLoansView() {
   const grid = document.getElementById('loansListGrid');
@@ -596,56 +615,78 @@ async function loadAndRenderUserLoansView() {
 
     if (prestamos.length === 0) {
       grid.innerHTML = `
-        <div style="grid-column: 1 / -1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 48px 24px; text-align: center; max-width: 580px; margin: 20px auto; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
-          <div style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+        <div style="grid-column: 1 / -1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 48px 24px; text-align: center; max-width: 440px; margin: 24px auto;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: #f8fafc; color: #64748b; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 12px; border: 1px solid #e2e8f0;">
             <i class="fa-solid fa-bookmark"></i>
           </div>
-          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">No tienes préstamos activos</h3>
-          <p style="color: #64748b; margin: 8px 0 0 0; font-size: 0.875rem; line-height: 1.5;">Explora el catálogo para solicitar libros y gestionarlos desde aquí.</p>
+          <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #0f172a;">Sin préstamos activos</h3>
+          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 0.8rem;">Los libros que solicites en el catálogo aparecerán aquí.</p>
         </div>
       `;
       return;
     }
 
+    grid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; margin-top: 20px; align-items: stretch;';
+
     grid.innerHTML = prestamos.map(p => {
       const idPrestamo = p.id_prestamo || p.id;
       const titulo = p.titulo || (p.libro && p.libro.titulo) || 'Libro sin título';
-      const editorial = p.editorial || (p.libro && p.libro.editorial) || 'Sin editorial';
+      const editorial = p.editorial || (p.libro && p.libro.editorial) || 'Editorial no especificada';
       const portada = p.portadaUrl || (p.libro && p.libro.portadaUrl) || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=450&fit=crop';
-      const fechaVenc = p.fecha_venciimiento || p.fechaVencimiento || 'Sin fecha registrada';
-      const horaVenc = p.hora_vencimiento ? `a las ${p.hora_vencimiento}` : '';
+      
+      const fechaVencRaw = p.fecha_venciimiento || p.fechaVencimiento || '';
+      const horaVencRaw = p.hora_vencimiento || '';
+      const fechaFormateada = formatearFechaLimpia(fechaVencRaw, horaVencRaw);
 
       return `
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
-          <div style="display: flex; gap: 14px; align-items: flex-start;">
-            <img src="${portada}" alt="${titulo}" style="width: 72px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; flex-shrink: 0;">
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 6px; width: fit-content;">PRÉSTAMO ACTIVO</span>
-              <h4 style="margin: 4px 0 2px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.3;">${titulo}</h4>
-              <p style="margin: 0; font-size: 0.775rem; color: #64748b;">${editorial}</p>
-              <p style="margin: 4px 0 0 0; font-size: 0.775rem; color: #1e293b;"><i class="fa-regular fa-calendar" style="margin-right: 4px; color: #2563eb;"></i> Vence: <strong>${fechaVenc} ${horaVenc}</strong></p>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 10px 20px -4px rgba(15, 23, 42, 0.08)';" onmouseout="this.style.transform='none'; this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 2px 4px rgba(15, 23, 42, 0.03)';">
+          
+          <div style="width: 100%; height: 230px; border-radius: 10px; overflow: hidden; background: #f8fafc; border: 1px solid #f1f5f9; position: relative;">
+            <img src="${portada}" alt="${titulo}" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;" title="${titulo}">
+              ${titulo}
+            </h4>
+            <p style="margin: 0; font-size: 0.775rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${editorial}
+            </p>
+            <div style="margin-top: 6px; font-size: 0.75rem; color: #475569; display: flex; align-items: center; gap: 5px;">
+              <i class="fa-regular fa-clock" style="color: #2563eb; font-size: 0.775rem;"></i>
+              <span>Vence: <strong style="font-weight: 600; color: #0f172a;">${fechaFormateada}</strong></span>
             </div>
           </div>
 
-          <div style="display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
-            <button class="btn-return-loan" data-id="${idPrestamo}" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease;">
-              Devolver libro
-            </button>
-          </div>
+          <!-- Botón de Devolución -->
+          <button class="btn-return-loan" data-id="${idPrestamo}" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; font-size: 0.775rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s ease;" onmouseover="if(!this.disabled){ this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='#0f172a'; }" onmouseout="if(!this.disabled){ this.style.background='#ffffff'; this.style.borderColor='#e2e8f0'; this.style.color='#334155'; }">
+            <i class="fa-solid fa-arrow-rotate-left" style="font-size: 0.725rem; color: #64748b;"></i> Devolver
+          </button>
+
         </div>
       `;
     }).join('');
 
     grid.querySelectorAll('.btn-return-loan').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const loanId = btn.getAttribute('data-id');
+
         if (confirm('¿Deseas devolver este libro?')) {
+          const btnTextoOriginal = btn.innerHTML;
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando...`;
+
           try {
             await returnLoan(loanId);
             hablarTexto('Préstamo devuelto correctamente.');
             await loadAndRenderUserLoansView();
           } catch (err) {
             alert(err.message || 'No se pudo realizar la devolución.');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.innerHTML = btnTextoOriginal;
           }
         }
       });
